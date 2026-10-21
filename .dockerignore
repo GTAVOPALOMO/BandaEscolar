@@ -1,0 +1,7 @@
+.venv
+.git
+data
+staticfiles
+__pycache__
+*.pyc
+.env
