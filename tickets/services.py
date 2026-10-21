@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from audit.services import log
 from cash.models import CashMovement
@@ -10,14 +10,23 @@ from .models import TicketSale, Ticket, TicketAction
 def sell_tickets(*, event, buyer_name, buyer_id, quantity, actor, idempotency_token):
     existing = TicketSale.objects.filter(idempotency_token=idempotency_token).first()
     if existing: return existing, False
+    event = type(event).objects.select_for_update().get(pk=event.pk)
+    existing = TicketSale.objects.filter(idempotency_token=idempotency_token).first()
+    if existing: return existing, False
     if not event.is_active or not event.has_tickets or not event.ticket_price:
         raise ValidationError("Este evento no tiene venta de entradas habilitada.")
     if quantity <= 0: raise ValidationError("La cantidad debe ser positiva.")
     if not buyer_name.strip() or not buyer_id.strip(): raise ValidationError("Nombre y cédula del comprador son obligatorios.")
     if not get_open_period(): raise ValidationError("La caja está cerrada. Abra una caja para vender.")
     total = event.ticket_price * quantity
-    sale = TicketSale.objects.create(event=event, buyer_name=buyer_name.strip(), buyer_id=buyer_id.strip(), quantity=quantity,
-        unit_price=event.ticket_price, total=total, idempotency_token=idempotency_token, sold_by=actor)
+    try:
+        with transaction.atomic():
+            sale = TicketSale.objects.create(event=event, buyer_name=buyer_name.strip(), buyer_id=buyer_id.strip(), quantity=quantity,
+                unit_price=event.ticket_price, total=total, idempotency_token=idempotency_token, sold_by=actor)
+    except IntegrityError:
+        existing = TicketSale.objects.filter(idempotency_token=idempotency_token).first()
+        if existing: return existing, False
+        raise
     Ticket.objects.bulk_create([Ticket(sale=sale) for _ in range(quantity)])
     movement = add_movement(actor=actor, kind=CashMovement.Kind.IN, origin=CashMovement.Origin.TICKET, amount=total,
         detail=f"Venta de {quantity} entrada(s) para {event.name}", source_key=f"ticket-sale:{sale.pk}")
@@ -35,6 +44,9 @@ def validate_ticket(*, event, code, actor, request_token=None):
     error = None
     with transaction.atomic():
         ticket = Ticket.objects.select_for_update().select_related("sale__event").get(pk=ticket.pk)
+        if request_token:
+            prior = TicketAction.objects.filter(request_token=request_token).first()
+            if prior: return prior.ticket, prior.action == TicketAction.Type.VALIDATE
         if ticket.sale.event_id != event.pk:
             TicketAction.objects.create(ticket=ticket, action=TicketAction.Type.WRONG_EVENT, actor=actor, request_token=request_token); error = "El ticket pertenece a otro evento."
         elif ticket.status == Ticket.Status.USED:

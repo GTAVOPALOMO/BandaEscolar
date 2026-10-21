@@ -1,7 +1,9 @@
 import calendar
 import mimetypes
 from datetime import date, timedelta
+from django.conf import settings
 from django.contrib import messages
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import FileResponse, Http404
 from django.utils import timezone
@@ -29,6 +31,11 @@ def event_detail(request, pk): return render(request, "events/detail.html", {"ev
 def event_image(request, pk):
     event = get_object_or_404(Event, pk=pk, is_active=True)
     if not event.image: raise Http404
+    if settings.USE_SUPABASE_STORAGE:
+        signed_url = event.image.storage.url(event.image.name, expire=settings.EVENT_IMAGE_URL_TTL)
+        response = redirect(signed_url)
+        response["Cache-Control"] = "private, no-store"
+        return response
     return FileResponse(event.image.open("rb"), content_type=mimetypes.guess_type(event.image.name)[0] or "application/octet-stream")
 
 @staff_required
@@ -43,9 +50,16 @@ def event_create(request):
 
 @staff_required
 def event_edit(request, pk):
-    event = get_object_or_404(Event, pk=pk); old = {"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active}; form = EventForm(request.POST or None, request.FILES or None, instance=event)
-    if request.method == "POST" and form.is_valid():
-        form.save(); log(actor=request.user, module="events", action="EDIT", entity="Event", entity_id=event.pk, before=old, after={"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active}); messages.success(request, "Evento actualizado."); return redirect("event_manage")
+    event = get_object_or_404(Event, pk=pk)
+    if request.method == "POST":
+        with transaction.atomic():
+            event = Event.objects.select_for_update().get(pk=event.pk)
+            old = {"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active}
+            form = EventForm(request.POST, request.FILES, instance=event)
+            if form.is_valid():
+                form.save(); log(actor=request.user, module="events", action="EDIT", entity="Event", entity_id=event.pk, before=old, after={"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active}); messages.success(request, "Evento actualizado."); return redirect("event_manage")
+    else:
+        form = EventForm(instance=event)
     return render(request, "generic_form.html", {"form": form, "title": "Editar evento", "multipart": True})
 
 @staff_required

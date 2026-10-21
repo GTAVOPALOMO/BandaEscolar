@@ -6,8 +6,9 @@
 - Una reconstrucción invalida asignaciones anteriores de forma trazable y crea nuevas asignaciones deterministas: pagos por fecha/ID y cuotas por año/mes/ID.
 - Al retirar a un estudiante solo se liberan las asignaciones de las cuotas convertidas a `SIN_CARGO_POR_RETIRO`. No se trasladan silenciosamente a deudas anteriores en ese acto. Al reingresar o crear una cuota nueva, todo crédito disponible vuelve a aplicarse por antigüedad.
 - Los importes son enteros positivos en CRC. El saldo inicial puede ser cero. El saldo de caja se deriva de movimientos append-only y el resumen del cierre queda congelado.
-- Las operaciones combinadas usan `transaction.atomic()`. SQLite usa `transaction_mode=IMMEDIATE` y `timeout=20`; además hay unicidad de tokens y fuentes de movimientos. Railway debe ejecutar una sola réplica.
-- `select_for_update()` no se considera suficiente en SQLite: la validación de ticket usa además una actualización condicional `estado=VÁLIDO`, y las operaciones monetarias tienen claves idempotentes únicas.
+- Las operaciones combinadas usan `transaction.atomic()`. PostgreSQL bloquea la caja, el estudiante o el evento antes de modificar flujos relacionados; esto serializa saldos, reasignaciones de cuotas y el precio usado en una venta. Las claves idempotentes y fuentes de movimientos siguen teniendo unicidad en base de datos.
+- En PostgreSQL, `select_for_update()` protege pagos, caja, cuotas y tickets. La validación de ticket vuelve a consultar el token después de adquirir el bloqueo y conserva además una actualización condicional `estado=VÁLIDO`. En desarrollo, SQLite mantiene `transaction_mode=IMMEDIATE` y `timeout=20` como alternativa local.
+- Los intentos concurrentes de abrir caja o crear pagos/ventas con el mismo token transforman la restricción única en el resultado de negocio esperado, sin duplicar dinero. La auditoría continúa dentro de la misma transacción que la operación registrada.
 
 ## Fechas y cuotas
 
@@ -17,7 +18,7 @@
 
 ## Seguridad y archivos
 
-- Las imágenes se validan por extensión, tamaño y decodificación con Pillow. En producción se entregan desde una vista pública limitada al ID de un evento activo; no se expone todo el volumen.
+- Las imágenes se validan por extensión, tamaño máximo de 4 MiB y decodificación con Pillow. En Vercel se guardan en el bucket privado `eventos` de Supabase Storage. La vista limitada al ID de un evento activo genera una URL firmada de corta duración; no expone el bucket.
 - Los PDF financieros y de tickets se generan bajo autorización y nunca se guardan en rutas públicas.
 - La protección de login bloquea un usuario durante 15 minutos después de ocho fallos recientes. No requiere Redis ni procesos auxiliares.
 - El lector usa una copia local fijada de `qr-scanner` 1.4.2 (MIT), que aprovecha `BarcodeDetector` cuando existe y usa su worker local como respaldo; siempre existe captura manual del código visible. No depende de una CDN en producción. Conviene probar cámara y permisos HTTPS en los teléfonos reales antes del evento.
@@ -26,4 +27,5 @@
 
 - No se expone edición directa de pagos, caja o auditoría en Django Admin. Las correcciones pasan por servicios y contramovimientos.
 - La anulación de tickets no devuelve dinero automáticamente. Si corresponde, el comité registra un egreso manual, preservando la política explícita.
-- No se ejecutó un despliegue real en Railway porque no se proporcionaron credenciales. La persistencia se verifica localmente y queda documentado el control manual del volumen.
+- El sistema de archivos de Vercel se considera efímero. PostgreSQL y Supabase Storage son obligatorios allí; `/tmp` solo se usa como espacio temporal.
+- No se ejecutó una conexión real a Supabase Storage/PostgreSQL ni un despliegue real en Vercel porque no se proporcionaron credenciales. Sí se aplicaron desde cero todas las migraciones y se ejecutó la suite contra PostgreSQL 16 local desechable, además de verificar la configuración resultante, los estáticos y SQLite local.

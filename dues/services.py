@@ -2,7 +2,7 @@ import calendar
 import uuid
 from datetime import date, timedelta
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 from audit.services import log
@@ -45,6 +45,7 @@ def active_months(student, through):
 
 @transaction.atomic
 def sync_student_dues(student, *, through=None, actor=None):
+    student = type(student).objects.select_for_update().get(pk=student.pk)
     through = month_start(through or timezone.localdate())
     created = []
     reactivated = False
@@ -75,6 +76,7 @@ def student_summary(student):
     return {"pending": pending, "pending_count": count, "credit": credit, "dues": dues}
 
 def rebuild_allocations(student, *, reason, actor=None):
+    student = type(student).objects.select_for_update().get(pk=student.pk)
     now = timezone.now()
     active = PaymentAllocation.objects.filter(payment__student=student, is_active=True)
     active.update(is_active=False, voided_at=now, reason=reason[:120])
@@ -102,9 +104,18 @@ def register_payment(*, student, amount, actor, idempotency_token, concept="Abon
     if not concept: raise ValidationError("El concepto es obligatorio.")
     existing = StudentPayment.objects.filter(idempotency_token=idempotency_token).first()
     if existing: return existing, False
+    student = type(student).objects.select_for_update().get(pk=student.pk)
+    existing = StudentPayment.objects.filter(idempotency_token=idempotency_token).first()
+    if existing: return existing, False
     sync_student_dues(student, actor=actor)
     if not get_open_period(): raise ValidationError("La caja está cerrada. Abra una caja para recibir el abono.")
-    payment = StudentPayment.objects.create(student=student, amount=amount, concept=concept[:200], idempotency_token=idempotency_token, registered_by=actor)
+    try:
+        with transaction.atomic():
+            payment = StudentPayment.objects.create(student=student, amount=amount, concept=concept[:200], idempotency_token=idempotency_token, registered_by=actor)
+    except IntegrityError:
+        existing = StudentPayment.objects.filter(idempotency_token=idempotency_token).first()
+        if existing: return existing, False
+        raise
     movement = add_movement(actor=actor, kind=CashMovement.Kind.IN, origin=CashMovement.Origin.DUE, amount=amount,
         detail=f"Abono de {student.name}", source_key=f"payment:{payment.pk}")
     rebuild_allocations(student, reason="Registro de abono", actor=actor)
@@ -117,13 +128,14 @@ def reverse_payment(*, payment, actor, reason):
     reason = (reason or "").strip()
     if not reason: raise ValidationError("El motivo es obligatorio.")
     payment = StudentPayment.objects.select_for_update().get(pk=payment.pk)
+    student = type(payment.student).objects.select_for_update().get(pk=payment.student_id)
     if payment.reversed_at: raise ValidationError("Este pago ya fue revertido.")
     original = CashMovement.objects.get(source_key=f"payment:{payment.pk}")
     movement = add_movement(actor=actor, kind=CashMovement.Kind.OUT, origin=CashMovement.Origin.REVERSAL, amount=payment.amount,
         detail=f"Reversión de abono #{payment.pk}: {reason}", source_key=f"payment-reversal:{payment.pk}", original=original)
     payment.reversed_at, payment.reversed_by, payment.reversal_reason = timezone.now(), actor, reason
     payment.save(update_fields=["reversed_at", "reversed_by", "reversal_reason"])
-    rebuild_allocations(payment.student, reason=f"Reversión de pago #{payment.pk}", actor=actor)
+    rebuild_allocations(student, reason=f"Reversión de pago #{payment.pk}", actor=actor)
     log(actor=actor, module="dues", action="REVERSE_PAYMENT", entity="StudentPayment", entity_id=payment.pk, reason=reason,
         after={"counter_movement": movement.pk})
     return payment
@@ -132,7 +144,11 @@ def reverse_payment(*, payment, actor, reason):
 def waive_dues(*, dues, actor, reason):
     reason = (reason or "").strip()
     if not reason: raise ValidationError("El motivo es obligatorio.")
-    locked = list(MonthlyDue.objects.select_for_update().filter(pk__in=[d.pk for d in dues]))
+    due_ids = [d.pk for d in dues]
+    student_model = MonthlyDue._meta.get_field("student").remote_field.model
+    student_ids = MonthlyDue.objects.filter(pk__in=due_ids).values_list("student_id", flat=True).distinct()
+    list(student_model.objects.select_for_update().filter(pk__in=student_ids).order_by("pk"))
+    locked = list(MonthlyDue.objects.select_for_update().filter(pk__in=due_ids))
     if not locked: raise ValidationError("Seleccione al menos una cuota.")
     if any(d.status != MonthlyDue.Status.ORDINARY or d.applied_amount for d in locked):
         raise ValidationError("Solo se pueden perdonar cuotas ordinarias sin abonos.")
@@ -148,10 +164,11 @@ def reverse_waiver(*, waiver, actor, reason):
     reason = (reason or "").strip()
     if not reason: raise ValidationError("El motivo es obligatorio.")
     waiver = DueWaiver.objects.select_for_update().get(pk=waiver.pk)
+    student = type(waiver.due.student).objects.select_for_update().get(pk=waiver.due.student_id)
     if waiver.reversed_at: raise ValidationError("El perdón ya fue revertido.")
     waiver.reversed_at, waiver.reversed_by, waiver.reversal_reason = timezone.now(), actor, reason
     waiver.save(update_fields=["reversed_at", "reversed_by", "reversal_reason"])
     waiver.due.status = MonthlyDue.Status.ORDINARY; waiver.due.save(update_fields=["status", "updated_at"])
-    rebuild_allocations(waiver.due.student, reason="Reversión de perdón", actor=actor)
+    rebuild_allocations(student, reason="Reversión de perdón", actor=actor)
     log(actor=actor, module="dues", action="REVERSE_WAIVER", entity="MonthlyDue", entity_id=waiver.due_id, reason=reason)
     return waiver

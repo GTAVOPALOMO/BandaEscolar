@@ -3,11 +3,17 @@ from datetime import datetime
 from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.db import connection
 
 class Command(BaseCommand):
     help = "Crea una copia consistente de SQLite mediante la API de backup."
     def add_arguments(self, parser): parser.add_argument("--output", help="Ruta del .sqlite3 de salida")
     def handle(self, *args, **options):
+        if connection.vendor != "sqlite":
+            raise CommandError(
+                "backup_data solo respalda SQLite local. No respalda PostgreSQL; "
+                "use pg_dump o los backups administrados de Supabase."
+            )
         source = Path(settings.DATABASES["default"]["NAME"])
         if not source.exists(): raise CommandError("No existe la base de datos de origen.")
         target = Path(options["output"] or (Path(settings.DATA_DIR) / "backups" / f"db-{datetime.now():%Y%m%d-%H%M%S}.sqlite3"))

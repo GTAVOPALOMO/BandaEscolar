@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from PIL import Image, UnidentifiedImageError
 from .models import Event
 class EventForm(forms.ModelForm):
@@ -7,7 +8,10 @@ class EventForm(forms.ModelForm):
         widgets = {"date": forms.DateInput(attrs={"type": "date"}), "time": forms.TimeInput(attrs={"type": "time"}), "description": forms.Textarea(attrs={"rows": 5})}
     def clean_image(self):
         image = self.cleaned_data.get("image")
-        if image and hasattr(image, "temporary_file_path") or (image and not getattr(image, "_committed", False)):
+        is_new_upload = image and (hasattr(image, "temporary_file_path") or not getattr(image, "_committed", False))
+        if is_new_upload and image.size > settings.MAX_EVENT_IMAGE_BYTES:
+            raise forms.ValidationError("La imagen no puede superar 4 MB.")
+        if is_new_upload:
             try:
                 parsed = Image.open(image)
                 if parsed.width * parsed.height > 40_000_000: raise forms.ValidationError("La imagen tiene dimensiones excesivas.")

@@ -4,7 +4,8 @@ from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.db import models
 
 def validate_image_size(value):
-    if value.size > 5 * 1024 * 1024: raise ValidationError("La imagen no puede superar 5 MB.")
+    if value.size > settings.MAX_EVENT_IMAGE_BYTES:
+        raise ValidationError("La imagen no puede superar 4 MB.")
 
 class Event(models.Model):
     name = models.CharField(max_length=150)

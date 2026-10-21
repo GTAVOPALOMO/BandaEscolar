@@ -1,6 +1,6 @@
 import uuid
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from audit.services import log
 from .models import CashPeriod, CashMovement
@@ -19,7 +19,13 @@ def open_cash(*, actor, opening_balance=None):
     else:
         amount = 0 if opening_balance is None else opening_balance
         if amount < 0: raise ValidationError("El saldo inicial no puede ser negativo.")
-    period = CashPeriod.objects.create(opening_balance=amount, opened_by=actor)
+    try:
+        with transaction.atomic():
+            period = CashPeriod.objects.create(opening_balance=amount, opened_by=actor)
+    except IntegrityError as error:
+        if get_open_period():
+            raise ValidationError("Ya existe una caja abierta.") from error
+        raise
     log(actor=actor, module="cash", action="OPEN", entity="CashPeriod", entity_id=period.pk, after={"opening_balance": amount})
     return period
 
