@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" fill="none">
+  <defs>
+    <pattern id="grain" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".55" fill="#FFF8E9" opacity=".12"/></pattern>
+    <clipPath id="frame"><rect width="640" height="640" rx="4"/></clipPath>
+  </defs>
+  <g clip-path="url(#frame)">
+    <path fill="#172C46" d="M0 0h640v640H0z"/>
+    <circle cx="418" cy="222" r="198" fill="#223B57"/>
+    <path d="M-110 460C60 240 201 604 406 441S669 309 735 375M-110 476C60 256 201 620 406 457S669 325 735 391M-110 492C60 272 201 636 406 473S669 341 735 407M-110 508C60 288 201 652 406 489S669 357 735 423M-110 524C60 304 201 668 406 505S669 373 735 439" stroke="#CBA76A" stroke-width="1.2" opacity=".32"/>
+    <path d="M0 575L266 640H0V575Z" fill="#BD4B3F"/>
+    <path d="M640 0H534L640 105V0Z" fill="#BD4B3F"/>
+    <path d="M573 0L640 67" stroke="#F4DEAD" stroke-width="7"/>
+    <!-- Trompeta: silueta original de cartel, sin insignias institucionales. -->
+    <g transform="translate(66 158) rotate(-24 240 95)">
+      <path d="M72 91H303C341 91 374 66 396 29L412 20V162L396 153C372 122 341 106 303 106H72V91Z" fill="#DDB466"/>
+      <path d="M88 94H308C345 94 370 80 396 59" stroke="#FFE9B5" stroke-width="5"/>
+      <ellipse cx="412" cy="91" rx="25" ry="72" fill="#F1CD84"/>
+      <ellipse cx="416" cy="91" rx="15" ry="58" fill="#9D6836"/>
+      <ellipse cx="420" cy="91" rx="8" ry="49" fill="#182D46"/>
+      <path d="M113 104V148C113 163 127 174 143 174H282C298 174 310 163 310 148V105" stroke="#DDB466" stroke-width="15"/>
+      <path d="M119 110V147C119 159 129 167 143 167H278" stroke="#FFE9B5" stroke-width="3"/>
+      <path d="M184 77V144M218 77V144M252 77V144" stroke="#EDCF92" stroke-width="16"/>
+      <path d="M184 56V76M218 56V76M252 56V76" stroke="#DDB466" stroke-width="6"/>
+      <path d="M174 54H194M208 54H228M242 54H262" stroke="#FFF0CB" stroke-width="7" stroke-linecap="round"/>
+      <path d="M44 98H77" stroke="#EDCF92" stroke-width="9"/>
+      <path d="M40 88V108" stroke="#FFF0CB" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <!-- Redoblante y baquetas. -->
+    <g transform="translate(127 354) rotate(12 147 87)">
+      <path d="M15 39V141C15 180 279 180 279 141V39H15Z" fill="#B9473B"/>
+      <path d="M151 44V168C218 167 279 156 279 141V39L151 44Z" fill="#963A34"/>
+      <path d="M23 49L69 157L113 58L157 166L201 56L246 153L271 49" stroke="#EBCB97" stroke-width="5"/>
+      <ellipse cx="147" cy="39" rx="132" ry="38" fill="#E6D7BC" stroke="#EACD99" stroke-width="10"/>
+      <ellipse cx="147" cy="37" rx="115" ry="27" fill="#F8EDD7"/>
+      <path d="M15 136V148C20 185 274 185 279 148V136C271 171 24 171 15 136Z" fill="#D7B678"/>
+      <path d="M18 49V72M68 68V89M114 76V96M160 76V96M205 71V91M253 59V79M277 46V66" stroke="#172C46" stroke-width="8"/>
+      <path d="M18 49V67M68 68V84M114 76V91M160 76V91M205 71V86M253 59V74M277 46V61" stroke="#F4DEAD" stroke-width="5"/>
+      <path d="M62 15L220-92M183 25L60-85" stroke="#EBCB97" stroke-width="8" stroke-linecap="round"/>
+      <ellipse cx="224" cy="-95" rx="12" ry="7" transform="rotate(-34 224 -95)" fill="#F8E5BF"/>
+      <ellipse cx="56" cy="-89" rx="12" ry="7" transform="rotate(43 56 -89)" fill="#F8E5BF"/>
+    </g>
+    <!-- Notas y marcas rítmicas. -->
+    <g fill="#E7BC6B">
+      <path d="M115 85L121 103L140 108L121 114L115 133L109 114L90 108L109 103Z"/>
+      <path d="M520 370L525 383L539 387L525 392L520 406L515 392L501 387L515 383Z"/>
+      <path d="M469 535L474 549L488 553L474 557L469 571L465 557L451 553L465 549Z"/>
+    </g>
+    <g stroke="#F2E3C8" stroke-linecap="round">
+      <path d="M483 289V246L522 234V277M483 258L522 246" stroke-width="5"/>
+      <path d="M277 88V58L299 68" stroke-width="4"/>
+    </g>
+    <g fill="#F2E3C8"><ellipse cx="475" cy="291" rx="12" ry="8" transform="rotate(-24 475 291)"/><ellipse cx="514" cy="279" rx="12" ry="8" transform="rotate(-24 514 279)"/><ellipse cx="270" cy="89" rx="10" ry="7" transform="rotate(-24 270 89)"/></g>
+    <g stroke="#CC6653" stroke-width="5" stroke-linecap="round"><path d="M484 121L502 106M503 148L529 142M464 99L472 77M77 305L60 314M86 327L76 344"/></g>
+    <circle cx="543" cy="460" r="5" fill="#E7BC6B"/><circle cx="72" cy="209" r="4" fill="#CC6653"/><circle cx="342" cy="567" r="4" fill="#F2E3C8"/>
+    <path fill="url(#grain)" d="M0 0h640v640H0z"/>
+    <path d="M28 33H94M28 33V99M612 541V607H546" stroke="#F4DEAD" opacity=".45"/>
+  </g>
+</svg>

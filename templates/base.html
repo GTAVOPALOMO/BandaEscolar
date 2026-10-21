@@ -1,4 +1,58 @@
 {% load static %}<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{% block title %}Banda Escolar Esquipulas{% endblock %}</title><link rel="stylesheet" href="{% static 'css/app.css' %}">{% block head %}{% endblock %}</head>
-<body><a class="skip" href="#contenido">Ir al contenido</a><header><nav aria-label="Principal"><a class="brand" href="{% url 'home' %}">♫ Banda Escolar Esquipulas</a><button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navlinks">Menú</button><div id="navlinks" class="navlinks"><a href="{% url 'home' %}">Calendario</a>{% if user.is_authenticated %}<a href="{% url 'dashboard' %}">Panel</a>{% if user.is_committee %}<a href="{% url 'student_list' %}">Estudiantes</a><a href="{% url 'cash_home' %}">Caja</a><a href="{% url 'sale_list' %}">Tickets</a><a href="{% url 'event_manage' %}">Eventos</a><a href="{% url 'audit_list' %}">Auditoría</a><a href="{% url 'user_list' %}">Cuentas</a>{% endif %}<form action="{% url 'logout' %}" method="post" class="inline">{% csrf_token %}<button class="link-button">Salir</button></form>{% else %}<a href="{% url 'login' %}">Ingresar</a>{% endif %}</div></nav></header>
-<main id="contenido" class="container">{% for message in messages %}<div class="notice {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}{% block content %}{% endblock %}</main><footer>Banda Escolar Esquipulas · Costa Rica</footer><script src="{% static 'js/app.js' %}"></script>{% block scripts %}{% endblock %}</body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#172c46">
+  <meta name="description" content="La música nos reúne. Agenda de ensayos, desfiles y presentaciones de la Banda Escolar Esquipulas, Costa Rica.">
+  <title>{% block title %}Banda Escolar Esquipulas{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip" href="#contenido">Ir al contenido</a>
+  <header class="site-header">
+    <div class="masthead"><span>ESQUIPULAS · COSTA RICA</span><span>Música que nos une</span></div>
+    <nav class="site-nav" aria-label="Principal">
+      <a class="brand" href="{% url 'home' %}" aria-label="Banda Escolar Esquipulas — Inicio">
+        {% include 'includes/brand_mark.html' %}
+        <span class="brand-name"><span>Banda Escolar</span><strong>Esquipulas</strong></span>
+      </a>
+      <button class="nav-toggle secondary" type="button" aria-expanded="false" aria-controls="navlinks">{% include 'includes/icon.html' with name='menu' %} Menú</button>
+      <div id="navlinks" class="navlinks">
+        {% with route=request.resolver_match.url_name %}
+        <a href="{% url 'home' %}"{% if route == 'home' %} aria-current="page"{% endif %}>Calendario</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard' %}"{% if route == 'dashboard' %} aria-current="page"{% endif %}>Panel</a>
+          {% if user.is_committee %}
+            <a href="{% url 'student_list' %}"{% if 'student' in route %} aria-current="page"{% endif %}>Estudiantes</a>
+            <a href="{% url 'cash_home' %}"{% if 'cash' in route %} aria-current="page"{% endif %}>Caja</a>
+            <a href="{% url 'sale_list' %}"{% if 'sale' in route or 'ticket' in route %} aria-current="page"{% endif %}>Tickets</a>
+            <a href="{% url 'event_manage' %}"{% if route == 'event_manage' or route == 'event_create' or route == 'event_edit' %} aria-current="page"{% endif %}>Eventos</a>
+            <a href="{% url 'audit_list' %}"{% if route == 'audit_list' %} aria-current="page"{% endif %}>Auditoría</a>
+            <a href="{% url 'user_list' %}"{% if 'user' in route %} aria-current="page"{% endif %}>Cuentas</a>
+          {% endif %}
+          <form action="{% url 'logout' %}" method="post" class="inline nav-logout">{% csrf_token %}<button class="link-button">Salir <span aria-hidden="true">↗</span></button></form>
+        {% else %}
+          <a class="nav-login" href="{% url 'login' %}"{% if route == 'login' %} aria-current="page"{% endif %}>Ingresar {% include 'includes/icon.html' with name='arrow' %}</a>
+        {% endif %}
+        {% endwith %}
+      </div>
+    </nav>
+  </header>
+  <main id="contenido" class="container">
+    {% for message in messages %}<div class="notice {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="footer-main">
+      <a class="brand" href="{% url 'home' %}">{% include 'includes/brand_mark.html' %}<span class="brand-name"><span>Banda Escolar</span><strong>Esquipulas</strong></span></a>
+      <p>Un mismo ritmo.<br><span>Una gran comunidad.</span></p>
+      <div class="footer-links"><a href="{% url 'home' %}">Calendario</a>{% if user.is_authenticated %}<a href="{% url 'dashboard' %}">Mi panel</a>{% else %}<a href="{% url 'login' %}">Acceso de familias y comité <span aria-hidden="true">↗</span></a>{% endif %}</div>
+    </div>
+    <div class="footer-bottom"><span>Banda Escolar Esquipulas · Costa Rica</span><span>Con música, crecemos juntos.</span></div>
+  </footer>
+  <script src="{% static 'js/app.js' %}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

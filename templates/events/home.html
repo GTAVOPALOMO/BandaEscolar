@@ -1,1 +1,60 @@
-{% extends 'base.html' %}{% block content %}<section class="hero"><p class="eyebrow">Agenda pública</p><h1>La música nos reúne</h1><p>Ensayos, desfiles y presentaciones de la Banda Escolar Esquipulas.</p></section><div class="month-nav"><a href="?mes={{ prev|date:'Y-m' }}" aria-label="Mes anterior">←</a><h2>{{ selected|date:'F Y'|capfirst }}</h2><a href="?mes={{ next|date:'Y-m' }}" aria-label="Mes siguiente">→</a></div><div class="calendar" role="grid" aria-label="Calendario mensual"><div class="weekday">Lun</div><div class="weekday">Mar</div><div class="weekday">Mié</div><div class="weekday">Jue</div><div class="weekday">Vie</div><div class="weekday">Sáb</div><div class="weekday">Dom</div>{% for week in weeks %}{% for day, day_events in week %}<div class="day{% if not day %} empty{% endif %}">{% if day %}<span class="day-number">{{ day }}</span>{% for event in day_events %}<a href="{% url 'event_detail' event.pk %}">{{ event.time|time:'H:i' }} {{ event.name }}</a>{% endfor %}{% endif %}</div>{% endfor %}{% endfor %}</div><section class="mobile-list"><h2>Eventos del mes</h2>{% for event in events %}<a class="event-row" href="{% url 'event_detail' event.pk %}"><time>{{ event.date|date:'d M' }}<small>{{ event.time|time:'H:i' }}</small></time><span><strong>{{ event.name }}</strong><small>{{ event.place }}</small></span></a>{% empty %}<p>No hay eventos publicados este mes.</p>{% endfor %}</section>{% endblock %}
+{% extends 'base.html' %}{% load static %}
+{% block body_class %}home-page{% endblock %}
+{% block content %}
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="eyebrow-line"></span> Nuestra banda, nuestra comunidad</p>
+    <h1 id="hero-title">La música<br><em>nos reúne.</em></h1>
+    <p class="hero-description">Cada ensayo, una ilusión.<br>Cada presentación, un motivo para encontrarnos.</p>
+    <div class="hero-actions">
+      <a class="button" href="#agenda">Explorar la agenda {% include 'includes/icon.html' with name='arrow' %}</a>
+      {% if user.is_authenticated %}<a class="text-link" href="{% url 'dashboard' %}">Ir a mi panel <span aria-hidden="true">↗</span></a>{% else %}<a class="text-link" href="{% url 'login' %}">Soy parte de la banda <span aria-hidden="true">↗</span></a>{% endif %}
+    </div>
+    <div class="hero-signature"><span class="rhythm-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>Talento que crece.<br><strong>Orgullo que se comparte.</strong></span></div>
+  </div>
+  <figure class="hero-art">
+    <div class="poster-label"><span>BANDA ESCOLAR</span><span>ESQUIPULAS</span></div>
+    <img src="{% static 'img/band-poster.svg' %}" width="640" height="640" alt="Ilustración de una trompeta dorada y un redoblante rojo entre notas musicales sobre un fondo azul profundo." fetchpriority="high">
+    <figcaption><span>Juntos suena mejor.</span><span class="poster-star" aria-hidden="true">✳</span></figcaption>
+  </figure>
+</section>
+
+<section class="agenda-section" id="agenda" aria-labelledby="agenda-title">
+  <div class="section-heading">
+    <div><p class="eyebrow">El ritmo de nuestra banda</p><h2 id="agenda-title">Nuestra agenda</h2></div>
+    <p>Ensayos, desfiles y presentaciones.<br>Un espacio para seguir cada encuentro.</p>
+  </div>
+  <div class="agenda-layout">
+    <div class="calendar-panel">
+      <div class="month-nav">
+        <h3>{{ selected|date:'F Y'|capfirst }}</h3>
+        <div class="month-controls"><a href="?mes={{ prev|date:'Y-m' }}#agenda" aria-label="Mes anterior">←</a><a href="?mes={{ next|date:'Y-m' }}#agenda" aria-label="Mes siguiente">→</a></div>
+      </div>
+      <div class="calendar" role="table" aria-label="Calendario mensual">
+        <div class="calendar-week" role="row"><div class="weekday" role="columnheader">Lun</div><div class="weekday" role="columnheader">Mar</div><div class="weekday" role="columnheader">Mié</div><div class="weekday" role="columnheader">Jue</div><div class="weekday" role="columnheader">Vie</div><div class="weekday" role="columnheader">Sáb</div><div class="weekday" role="columnheader">Dom</div></div>
+        {% for week in weeks %}<div class="calendar-week" role="row">{% for day, day_events in week %}
+          <div class="day{% if not day %} empty{% endif %}{% if day_events %} has-events{% endif %}" role="cell">
+            {% if day %}<span class="day-number">{{ day }}</span>{% for event in day_events %}<a href="{% url 'event_detail' event.pk %}"><span>{{ event.time|time:'H:i' }}</span>{{ event.name }}</a>{% endfor %}{% endif %}
+          </div>
+        {% endfor %}</div>{% endfor %}
+      </div>
+      <div class="calendar-key"><span class="legend-dot"></span> Día con actividad <span class="calendar-key-note">Haz clic en un evento para ver los detalles</span></div>
+    </div>
+    <aside class="agenda-events" aria-labelledby="events-title">
+      <div class="agenda-events-heading"><h3 id="events-title">Este mes</h3><span class="event-count">{{ events|length }}</span></div>
+      <div class="event-list">
+        {% for event in events %}
+        <a class="event-row" href="{% url 'event_detail' event.pk %}">
+          <time datetime="{{ event.date|date:'Y-m-d' }}"><strong>{{ event.date|date:'d' }}</strong><span>{{ event.date|date:'M' }}</span></time>
+          <span class="event-row-info"><strong>{{ event.name }}</strong><small>{{ event.time|time:'H:i' }} · {{ event.place }}</small></span>
+          <span class="event-row-arrow" aria-hidden="true">↗</span>
+        </a>
+        {% empty %}
+        <div class="empty-state">{% include 'includes/icon.html' with name='music' %}<h4>Un pequeño intermedio</h4><p>No hay eventos publicados este mes. Pronto habrá más música por compartir.</p></div>
+        {% endfor %}
+      </div>
+      <p class="agenda-note">{% include 'includes/icon.html' with name='calendar' %}<span>La agenda se actualiza con las actividades publicadas por el comité.</span></p>
+    </aside>
+  </div>
+</section>
+{% endblock %}
