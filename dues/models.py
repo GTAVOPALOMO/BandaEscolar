@@ -3,11 +3,43 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 class FeeRateHistory(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Activa"
+        SUPERSEDED = "SUPERSEDED", "Sustituida"
+        CANCELED = "CANCELED", "Cancelada"
+
+    class DecisionKind(models.TextChoices):
+        INITIAL = "INITIAL", "Tarifa inicial"
+        SCHEDULED = "SCHEDULED", "Programación"
+        REPLACEMENT = "REPLACEMENT", "Sustitución"
+
     amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
-    effective_from_month = models.DateField(unique=True)
+    effective_from_month = models.DateField(db_index=True)
     decided_at = models.DateTimeField(auto_now_add=True)
     decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    class Meta: ordering = ["effective_from_month"]
+    decision_kind = models.CharField(max_length=12, choices=DecisionKind.choices, default=DecisionKind.SCHEDULED)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+    reason = models.TextField(blank=True)
+    replaces = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="replacement_versions")
+    canceled_at = models.DateTimeField(null=True, blank=True)
+    canceled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="fee_rates_canceled")
+    cancellation_reason = models.TextField(blank=True)
+    decision_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ["effective_from_month", "decided_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["decision_kind"],
+                condition=models.Q(decision_kind="INITIAL"),
+                name="unique_initial_fee_rate_decision",
+            ),
+            models.UniqueConstraint(
+                fields=["effective_from_month"],
+                condition=models.Q(status="ACTIVE"),
+                name="unique_active_fee_rate_month",
+            ),
+        ]
 
 class MonthlyDue(models.Model):
     class Status(models.TextChoices):

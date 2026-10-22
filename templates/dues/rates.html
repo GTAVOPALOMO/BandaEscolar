@@ -1,1 +1,111 @@
-{% extends 'base.html' %}{% load money %}{% block content %}<h1>Tarifa mensual</h1><div class="notice">Después de la tarifa histórica inicial, todo cambio rige desde el primer día del mes siguiente y nunca reescribe cuotas existentes.</div><div class="grid-2"><form method="post" class="panel form">{% csrf_token %}<h2>Registrar decisión</h2>{% include 'includes/form_fields.html' %}<button>Guardar tarifa</button></form><section class="panel"><h2>Historial</h2><table><thead><tr><th>Desde</th><th>Monto</th><th>Decidió</th></tr></thead><tbody>{% for rate in rates %}<tr><td>{{ rate.effective_from_month|date:'m/Y' }}</td><td>{{ rate.amount|crc }}</td><td>{{ rate.decided_by.username }}</td></tr>{% empty %}<tr><td colspan="3">Debe registrar la primera tarifa.</td></tr>{% endfor %}</tbody></table></section></div>{% endblock %}
+{% extends 'base.html' %}{% load money %}
+{% block title %}Tarifas mensuales · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Tarifas mensuales</h1><p>Defina cuánto se cobra y consulte cada decisión anterior.</p></div></div>
+
+<div class="cards metrics rate-summary">
+  <article class="card">
+    <h2 class="metric-heading">Tarifa vigente hoy</h2>
+    {% if current_rate %}
+      <p class="metric">{{ current_rate.amount|crc }}</p>
+      <p>Vigente desde {{ current_rate.effective_from_month|date:'m/Y' }}.</p>
+    {% else %}
+      <p class="metric">Sin definir</p>
+      <p>No existe una tarifa aplicable al mes actual.</p>
+    {% endif %}
+  </article>
+  <article class="card">
+    <h2 class="metric-heading">Próxima tarifa programada</h2>
+    {% if upcoming_rate %}
+      <p class="metric">{{ upcoming_rate.amount|crc }}</p>
+      <p>Comienza en {{ upcoming_rate.effective_from_month|date:'m/Y' }}.</p>
+      {% if current_rate %}<p>Diferencia: {% if upcoming_rate.amount_difference > 0 %}+{% endif %}{{ upcoming_rate.amount_difference|crc }}</p>{% endif %}
+      {% if upcoming_rate.can_cancel %}
+        <a class="danger-text" href="{% url 'rate_cancel' upcoming_rate.pk %}">Cancelar tarifa programada</a>
+      {% else %}
+        <p class="form-text">{{ upcoming_rate.cancellation_error }}</p>
+      {% endif %}
+    {% else %}
+      <p class="metric">Sin cambios</p>
+      <p>No hay una tarifa futura activa.</p>
+    {% endif %}
+  </article>
+</div>
+
+<div class="grid-2 rate-editor">
+  <form method="post" class="panel form">
+    {% csrf_token %}
+    {% if has_rate %}
+      <h2>Programar tarifa</h2>
+      <div class="rate-effective"><small>Vigente a partir de</small><strong>{{ next_effective|date:'m/Y' }}</strong><span>Primer día del mes siguiente, hora de Costa Rica.</span></div>
+      {% if replacement %}<div class="notice warning"><strong>Ya hay {{ replacement.amount|crc }} programados para {{ next_effective|date:'m/Y' }}.</strong><br>La nueva decisión la sustituirá. Ambas permanecerán en el historial y debe indicar el motivo.</div>{% endif %}
+    {% else %}
+      <h2>Registrar tarifa inicial</h2>
+      <p>Elija el primer mes al que debe aplicarse. La fecha se normaliza al día 1 y cubre todo el mes.</p>
+    {% endif %}
+    {% include 'includes/form_fields.html' %}
+    <button type="submit">{% if has_rate and replacement %}Sustituir tarifa programada{% elif has_rate %}Programar nueva tarifa{% else %}Registrar tarifa inicial{% endif %}</button>
+  </form>
+  <aside class="panel">
+    <h2>Cómo funcionan</h2>
+    <ul>
+      <li>La primera tarifa puede empezar en un mes histórico para cubrir matrículas retroactivas.</li>
+      <li>Todo cambio posterior comienza el mes siguiente; no puede enviarse otra fecha.</li>
+      <li>Las cuotas ya creadas conservan siempre su importe original.</li>
+      <li>Una tarifa que ya comenzó no se cancela hacia atrás. Se corrige con una nueva decisión para el mes siguiente.</li>
+    </ul>
+  </aside>
+</div>
+
+<section class="panel rate-history" aria-labelledby="vigencias-title">
+  <h2 id="vigencias-title">Historial de vigencias</h2>
+  <p>Incluye versiones sustituidas y canceladas; esas versiones no se usan para generar cuotas.</p>
+  <p class="table-hint">Si la tabla no cabe, deslícela horizontalmente.</p>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Historial de vigencias de tarifas">
+    <table>
+      <thead><tr><th scope="col">Desde</th><th scope="col">Hasta</th><th scope="col">Monto</th><th scope="col">Estado</th><th scope="col">Decidió</th><th scope="col">Detalle</th></tr></thead>
+      <tbody>
+      {% for rate in versions %}
+        <tr>
+          <td>{{ rate.effective_from_month|date:'m/Y' }}</td>
+          <td>{% if rate.valid_until %}{{ rate.valid_until|date:'m/Y' }}{% elif rate.status == 'ACTIVE' %}En adelante{% else %}No aplicable{% endif %}</td>
+          <td>{{ rate.amount|crc }}</td>
+          <td><span class="badge rate-{{ rate.status|lower }}">{{ rate.display_state }}</span></td>
+          <td>{{ rate.decided_by.username }}<br><small>{{ rate.decided_at|date:'d/m/Y H:i' }}</small></td>
+          <td>
+            {% if rate.replaces %}Sustituyó la versión de {{ rate.replaces.amount|crc }}.{% endif %}
+            {% if rate.reason %}{{ rate.reason }}{% endif %}
+            {% if rate.status == 'CANCELED' %}Cancelada por {{ rate.canceled_by.username }}: {{ rate.cancellation_reason }}{% endif %}
+            {% if rate.can_cancel %}<a class="danger-text" href="{% url 'rate_cancel' rate.pk %}">Cancelar tarifa programada</a>{% endif %}
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="6">Aún no se ha registrado ninguna tarifa.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel rate-decisions" aria-labelledby="decisions-title">
+  <h2 id="decisions-title">Historial de decisiones</h2>
+  <p>Cada registro indica quién tomó la decisión y qué cambió. La auditoría es inmutable.</p>
+  <p class="table-hint">Si la tabla no cabe, deslícela horizontalmente.</p>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Historial de decisiones sobre tarifas">
+    <table>
+      <thead><tr><th scope="col">Fecha</th><th scope="col">Responsable</th><th scope="col">Acción</th><th scope="col">Vigencia</th><th scope="col">Antes</th><th scope="col">Después</th><th scope="col">Motivo</th></tr></thead>
+      <tbody>
+      {% for entry in decisions %}
+        <tr>
+          <td>{{ entry.created_at|date:'d/m/Y H:i' }}</td>
+          <td>{{ entry.actor.username|default:'Sistema' }}</td>
+          <td>{% if entry.action == 'INITIAL_RATE' %}Creación inicial{% elif entry.action == 'REPLACE_RATE' %}Sustitución{% elif entry.action == 'CANCEL_RATE' %}Cancelación{% else %}Programación{% endif %}</td>
+          <td>{{ entry.effective_month }}</td>
+          <td>{% if entry.before.amount %}{{ entry.before.amount|crc }}{% else %}—{% endif %}</td>
+          <td>{% if entry.after.amount %}{{ entry.after.amount|crc }}{% else %}—{% endif %}</td>
+          <td>{{ entry.reason|default:'—' }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="7">No hay decisiones auditadas todavía.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

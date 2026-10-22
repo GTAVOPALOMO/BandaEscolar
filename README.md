@@ -120,7 +120,7 @@ DEBUG=1 python manage.py backup_data --output ./backups/db.sqlite3
 ## Guía rápida del comité
 
 1. En **Cuentas**, cree al encargado y entregue una sola vez su contraseña temporal.
-2. En **Tarifas**, registre la primera tarifa y su mes histórico. Luego, en **Estudiantes**, matricule y vincule al encargado.
+2. En **Tarifas**, registre la primera tarifa y su mes histórico. Los cambios posteriores quedan programados automáticamente para el mes siguiente. Si corrige una programación, indique el motivo; ambas decisiones aparecerán en el historial. Una decisión futura puede cancelarse antes de que comience solo mientras no existan cuotas creadas para su período.
 3. En **Caja**, haga la primera apertura con el efectivo preexistente. Aperturas posteriores heredan el último cierre.
 4. En el estudiante, use **Registrar abono**. El sistema aplica a la cuota más antigua y conserva el excedente como saldo a favor.
 5. Para carga inicial, use **Perdonar/regularizar cuotas**, seleccione meses sin abonos y escriba el motivo. Esto no crea dinero en caja.

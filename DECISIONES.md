@@ -13,7 +13,10 @@
 ## Fechas y cuotas
 
 - Un período activo cobra el mes de inicio completo y excluye por completo el mes de retiro. Un reingreso en el mismo mes reactiva la única cuota existente.
-- La primera tarifa puede indicar un mes histórico explícito, necesario para una matrícula retroactiva. Toda decisión posterior se fija al primer día del mes siguiente. Varias decisiones para el mismo mes actualizan esa versión y cada decisión queda auditada.
+- La primera tarifa exige un mes histórico explícito, se normaliza al día 1 y no puede comenzar después del mes actual. Toda decisión posterior se fija en el servidor al primer día del mes siguiente según `America/Costa_Rica`; el cliente no decide esa fecha.
+- Las tarifas son decisiones versionadas. Si se sustituye una programación del mismo mes, la versión anterior pasa a `SUSTITUIDA` y la nueva referencia a la anterior; no se sobrescribe ni se borra el registro. Una restricción parcial permite una sola versión activa por mes y otra restricción garantiza una única decisión inicial.
+- Solo puede cancelarse una tarifa activa cuya vigencia aún no comenzó, con un motivo obligatorio y una tarifa anterior que continúe vigente. La cancelación se rechaza si ya existen cuotas materializadas en el intervalo que esa tarifa cubriría. La versión queda como `CANCELADA` y puede registrarse una nueva decisión para el mismo mes.
+- Las cuotas almacenan su `original_amount` al crearse. Sustituir o cancelar una decisión nunca recalcula cuotas existentes ni modifica pagos, asignaciones o movimientos de caja.
 - La sincronización ocurre en paneles/estados y antes de registrar pagos; el calendario público nunca la ejecuta.
 
 ## Seguridad y archivos

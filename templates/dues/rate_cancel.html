@@ -1,0 +1,15 @@
+{% extends 'base.html' %}{% load money %}
+{% block title %}Cancelar tarifa programada · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h1>Cancelar tarifa programada</h1>
+  <p>Va a cancelar la tarifa de <strong>{{ rate.amount|crc }}</strong> prevista desde <strong>{{ rate.effective_from_month|date:'m/Y' }}</strong>.</p>
+  {% if prior %}<p>Si confirma, la tarifa anterior de <strong>{{ prior.amount|crc }}</strong> continuará aplicándose hasta una nueva decisión.</p>{% else %}<p class="notice error">No existe una tarifa anterior que pueda continuar vigente.</p>{% endif %}
+  <p>La tarifa cancelada y el motivo permanecerán en el historial. Esta acción no modifica cuotas, pagos ni movimientos de caja existentes.</p>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {% include 'includes/form_fields.html' %}
+    <div class="actions"><button class="danger" type="submit">Cancelar tarifa programada</button><a class="button secondary" href="{% url 'rates' %}">Volver sin cancelar</a></div>
+  </form>
+</section>
+{% endblock %}

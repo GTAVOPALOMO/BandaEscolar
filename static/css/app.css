@@ -338,6 +338,17 @@ table{font-size:.9375rem}
 th{font-size:.8125rem;letter-spacing:.025em}
 .table-wrap{max-width:100%}
 .table-hint{font-size:.875rem;color:var(--muted);margin:0 0 8px}
+.rate-summary{margin-top:0}
+.rate-summary .metric{font-size:clamp(1.7rem,3vw,2.4rem)}
+.rate-editor{margin-bottom:24px}
+.rate-effective{display:grid;gap:3px;padding:16px;margin:0 0 20px;border-left:4px solid var(--gold);background:var(--soft)}
+.rate-effective small{font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rate-effective strong{font:600 1.6rem var(--display)}
+.rate-effective span{font-size:.875rem;color:var(--muted)}
+.rate-history+.rate-decisions{margin-top:24px}
+.rate-canceled{background:#f4e2dc;color:#983c31}
+.rate-superseded{background:#ece8df;color:#665c4b}
+.rate-active{background:#e4eee5;color:#2e634c}
 .badge{font-size:.8125rem}
 .form-field{margin-bottom:22px}
 .form label,.search label{font-size:1rem}

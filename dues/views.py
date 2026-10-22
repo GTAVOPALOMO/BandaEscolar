@@ -12,29 +12,117 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from audit.services import log
+from audit.models import AuditLog
 from common.permissions import staff_required
 from students.models import Student
 from students.views import accessible_student
-from .forms import RateForm, PaymentForm, WaiveForm, ReasonForm
+from .forms import CancelRateForm, InitialRateForm, NextRateForm, PaymentForm, WaiveForm, ReasonForm
 from .models import FeeRateHistory, StudentPayment, DueWaiver
-from .services import set_next_rate, register_payment, waive_dues, reverse_waiver, reverse_payment, sync_student_dues, student_summary, month_start
+from .services import cancel_scheduled_rate, create_initial_rate, next_month, rate_for, scheduled_rate_cancellation_error, set_next_rate, register_payment, waive_dues, reverse_waiver, reverse_payment, sync_student_dues, student_summary, month_start
 
 def crc(value): return f"₡{value:,.0f}".replace(",", ".")
 
 @staff_required
 def rates(request):
-    form = RateForm(request.POST or None)
+    today = month_start(timezone.localdate())
+    active_rates = FeeRateHistory.objects.filter(status=FeeRateHistory.Status.ACTIVE)
+    has_rate = active_rates.exists()
+    next_effective = next_month(today)
+    replacement = active_rates.filter(effective_from_month=next_effective).first() if has_rate else None
+    form = (NextRateForm(request.POST or None, replacing=bool(replacement)) if has_rate else InitialRateForm(request.POST or None))
     if request.method == "POST" and form.is_valid():
         try:
-            if FeeRateHistory.objects.exists(): rate = set_next_rate(amount=form.cleaned_data["amount"], actor=request.user)
+            if has_rate:
+                result = set_next_rate(
+                    amount=form.cleaned_data["amount"], actor=request.user,
+                    reason=form.cleaned_data.get("reason", ""), decision_token=form.cleaned_data["decision_token"],
+                )
             else:
-                effective = month_start(form.cleaned_data["initial_effective_month"] or timezone.localdate())
-                rate = FeeRateHistory.objects.create(amount=form.cleaned_data["amount"], effective_from_month=effective, decided_by=request.user)
-                log(actor=request.user, module="dues", action="INITIAL_RATE", entity="FeeRateHistory", entity_id=rate.pk, after={"amount": rate.amount, "effective": effective.isoformat()})
-            messages.success(request, "Tarifa registrada."); return redirect("rates")
-        except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "dues/rates.html", {"form": form, "rates": FeeRateHistory.objects.all()})
+                result = create_initial_rate(
+                    amount=form.cleaned_data["amount"], effective_from_month=form.cleaned_data["initial_effective_month"],
+                    actor=request.user, decision_token=form.cleaned_data["decision_token"],
+                )
+            rate = result.rate
+            if not result.created:
+                messages.info(request, "Esta decisión ya había sido registrada; no se duplicó.")
+            elif rate.decision_kind == FeeRateHistory.DecisionKind.INITIAL:
+                messages.success(request, f"Tarifa inicial de {crc(rate.amount)} vigente desde {rate.effective_from_month:%m/%Y}.")
+            elif result.replaced:
+                messages.success(request, f"Tarifa programada actualizada a {crc(rate.amount)} para {rate.effective_from_month:%m/%Y}; la decisión anterior permanece en el historial.")
+            else:
+                messages.success(request, f"Tarifa de {crc(rate.amount)} programada para {rate.effective_from_month:%m/%Y}.")
+            return redirect("rates")
+        except ValidationError as exc:
+            if hasattr(exc, "error_dict"):
+                for field, errors in exc.error_dict.items():
+                    for error in errors:
+                        form.add_error(field if field in form.fields else None, error)
+            else:
+                form.add_error(None, exc)
+
+    versions = list(FeeRateHistory.objects.select_related("decided_by", "canceled_by", "replaces"))
+    current = rate_for(today)
+    upcoming = active_rates.filter(effective_from_month__gt=today).order_by("effective_from_month", "pk").first()
+    ordered_active = list(active_rates.order_by("effective_from_month", "pk"))
+    for version in versions:
+        if version.status == FeeRateHistory.Status.CANCELED:
+            version.display_state = "Cancelada"
+        elif version.status == FeeRateHistory.Status.SUPERSEDED:
+            version.display_state = "Sustituida"
+        elif current and version.pk == current.pk:
+            version.display_state = "Vigente"
+        elif version.effective_from_month > today:
+            version.display_state = "Programada"
+        else:
+            version.display_state = "Histórica"
+        version.valid_until = None
+        if version.status == FeeRateHistory.Status.ACTIVE:
+            later = next((item for item in ordered_active if item.effective_from_month > version.effective_from_month), None)
+            if later:
+                version.valid_until = later.effective_from_month - date.resolution
+        version.cancellation_error = scheduled_rate_cancellation_error(rate=version, today=today)
+        version.can_cancel = not version.cancellation_error
+    if upcoming and current:
+        upcoming.amount_difference = upcoming.amount - current.amount
+    decisions = list(AuditLog.objects.filter(
+        module="dues", entity="FeeRateHistory",
+        action__in=["INITIAL_RATE", "SET_RATE", "SCHEDULE_RATE", "REPLACE_RATE", "CANCEL_RATE"],
+    ).select_related("actor")[:200])
+    for decision in decisions:
+        decision.effective_month = decision.after.get("effective_from_month") or decision.after.get("effective") or "—"
+    return render(request, "dues/rates.html", {
+        "form": form, "versions": versions, "current_rate": current, "upcoming_rate": upcoming,
+        "next_effective": next_effective, "replacement": replacement, "has_rate": has_rate, "decisions": decisions,
+        "today": today,
+    })
+
+
+@staff_required
+def rate_cancel(request, pk):
+    rate = get_object_or_404(FeeRateHistory.objects.select_related("decided_by"), pk=pk)
+    today = month_start(timezone.localdate())
+    cancellation_error = scheduled_rate_cancellation_error(rate=rate, today=today)
+    if cancellation_error:
+        messages.error(request, cancellation_error)
+        return redirect("rates")
+    prior = FeeRateHistory.objects.filter(
+        status=FeeRateHistory.Status.ACTIVE,
+        effective_from_month__lt=rate.effective_from_month,
+    ).order_by("-effective_from_month", "-pk").first()
+    form = CancelRateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            cancel_scheduled_rate(rate=rate, actor=request.user, reason=form.cleaned_data["reason"])
+            messages.success(request, f"Tarifa de {crc(rate.amount)} para {rate.effective_from_month:%m/%Y} cancelada; la decisión permanece en el historial.")
+            return redirect("rates")
+        except ValidationError as exc:
+            if hasattr(exc, "error_dict"):
+                for field, errors in exc.error_dict.items():
+                    for error in errors:
+                        form.add_error(field if field in form.fields else None, error)
+            else:
+                form.add_error(None, exc)
+    return render(request, "dues/rate_cancel.html", {"form": form, "rate": rate, "prior": prior})
 
 @staff_required
 def payment_create(request, student_pk):
