@@ -1,0 +1,8 @@
+[
+  "Login preserves authorized next URL",
+  "Sale POST creates two tickets, total CRC 4,000 and authorized PDF",
+  "Manual QR code confirmation succeeds once and duplicate is rejected",
+  "Payment POST updates student pending dues to zero",
+  "Cash reflects sale plus payment: CRC 16,500; period selector works",
+  "Event create/edit POST round-trip preserves local date and publishes correct month"
+]

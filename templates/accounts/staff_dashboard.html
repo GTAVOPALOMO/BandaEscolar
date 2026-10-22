@@ -1,1 +1,25 @@
-{% extends 'base.html' %}{% load money %}{% block content %}<div class="page-head"><h1>Panel del comité</h1><a class="button" href="{% url 'sale_create' %}">Vender tickets</a></div><div class="cards metrics"><article class="card"><small>Caja</small><p class="metric">{% if cash %}{{ cash.current_balance|crc }}{% else %}Cerrada{% endif %}</p></article><article class="card"><small>Estudiantes activos</small><p class="metric">{{ active_students }}</p></article><article class="card"><small>Total pendiente</small><p class="metric">{{ pending_total|crc }}</p><p>{{ pending_dues }} cuotas · {{ students_pending }} estudiantes</p></article></div><div class="grid-2"><section class="panel"><h2>Movimientos recientes</h2><ul class="clean">{% for m in movements %}<li>{{ m.created_at|date:'d/m H:i' }} · {{ m.detail }} · {{ m.amount|crc }}</li>{% empty %}<li>Sin movimientos.</li>{% endfor %}</ul><a href="{% url 'cash_home' %}">Ver caja</a></section><section class="panel"><h2>Acciones frecuentes</h2><div class="actions"><a class="button" href="{% url 'student_create' %}">Matricular</a><a class="button" href="{% url 'cash_movement' %}">Movimiento</a><a class="button" href="{% url 'ticket_scan' %}">Escanear QR</a><a class="button secondary" href="{% url 'rates' %}">Tarifas</a></div></section><section class="panel"><h2>Abonos recientes</h2><ul class="clean">{% for payment in payments %}<li><a href="{% url 'student_detail' payment.student_id %}">{{ payment.student.name }}</a> · {{ payment.amount|crc }} · {{ payment.created_at|date:'d/m H:i' }}</li>{% empty %}<li>Sin abonos.</li>{% endfor %}</ul></section><section class="panel"><h2>Próximos eventos</h2><ul class="clean">{% for event in events %}<li><a href="{% url 'event_detail' event.pk %}">{{ event.name }}</a> · {{ event.date|date:'d/m/Y' }}</li>{% empty %}<li>Sin eventos próximos.</li>{% endfor %}</ul></section></div><section class="panel"><h2>Tickets por evento</h2><div class="table-wrap"><table><thead><tr><th>Evento</th><th>Vendidos</th><th>Usados</th></tr></thead><tbody>{% for row in ticket_stats %}<tr><td>{{ row.event.name }}</td><td>{{ row.sold }}</td><td>{{ row.used }}</td></tr>{% empty %}<tr><td colspan="3">Sin eventos con entradas.</td></tr>{% endfor %}</tbody></table></div></section>{% endblock %}
+{% extends 'base.html' %}{% load money %}
+{% block title %}Panel del comité · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Panel del comité</h1></div>
+<div class="cards metrics">
+  <article class="card"><h2 class="metric-heading">Caja</h2><p class="metric">{% if cash %}{{ cash.current_balance|crc }}{% else %}Cerrada{% endif %}</p><a href="{% url 'cash_home' %}">{% if cash %}Ver caja abierta{% else %}Consultar caja{% endif %}</a></article>
+  <article class="card"><h2 class="metric-heading">Total pendiente</h2><p class="metric">{{ pending_total|crc }}</p><p>{{ pending_dues }} cuotas · {{ students_pending }} estudiantes</p></article>
+  <article class="card"><h2 class="metric-heading">Estudiantes activos</h2><p class="metric">{{ active_students }}</p><a href="{% url 'student_list' %}">Consultar estudiantes</a></article>
+</div>
+<section class="panel frequent-actions"><h2>Acciones frecuentes</h2><div class="actions">
+  <a class="button" href="{% url 'student_list' %}">Buscar estudiante / abonar</a>
+  <a class="button" href="{% url 'sale_create' %}">Vender tickets</a>
+  <a class="button secondary" href="{% url 'ticket_scan' %}">Validar ingreso QR</a>
+  <a class="button secondary" href="{% url 'student_create' %}">Matricular estudiante</a>
+  <a class="button secondary" href="{% url 'cash_movement' %}">Registrar ingreso / egreso</a>
+  <a class="button secondary" href="{% url 'event_create' %}">Crear evento</a>
+  <a href="{% url 'rates' %}">Consultar tarifas</a>
+</div></section>
+<div class="grid-2">
+  <section class="panel"><h2>Movimientos recientes</h2><ul class="clean">{% for m in movements %}<li>{{ m.created_at|date:'d/m/Y H:i' }} · {{ m.detail }} · {{ m.get_kind_display }}: {{ m.amount|crc }}</li>{% empty %}<li>Sin movimientos.</li>{% endfor %}</ul><a href="{% url 'cash_home' %}">Ver caja</a></section>
+  <section class="panel"><h2>Abonos recientes</h2><ul class="clean">{% for payment in payments %}<li><a href="{% url 'student_detail' payment.student_id %}">{{ payment.student.name }}</a> · {{ payment.amount|crc }} · {{ payment.created_at|date:'d/m/Y H:i' }}</li>{% empty %}<li>Sin abonos.</li>{% endfor %}</ul></section>
+  {% include 'includes/upcoming_events.html' %}
+  <section class="panel"><h2>Tickets por evento</h2><p class="table-hint">Si la tabla no cabe, deslícela horizontalmente.</p><div class="table-wrap" tabindex="0" role="region" aria-label="Tickets por evento"><table><thead><tr><th scope="col">Evento</th><th scope="col">Vendidos</th><th scope="col">Usados</th></tr></thead><tbody>{% for row in ticket_stats %}<tr><td>{{ row.event.name }}</td><td>{{ row.sold }}</td><td>{{ row.used }}</td></tr>{% empty %}<tr><td colspan="3">Sin eventos con entradas.</td></tr>{% endfor %}</tbody></table></div></section>
+</div>
+{% endblock %}

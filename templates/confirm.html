@@ -1,1 +1,7 @@
-{% extends 'base.html' %}{% block content %}<section class="panel narrow"><h1>{{ title }}</h1><p>{{ message }}</p><form method="post">{% csrf_token %}<button class="danger" type="submit">Confirmar</button> <a class="button secondary" href="javascript:history.back()">Cancelar</a></form></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ title }} · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<section class="panel narrow"><h1>{{ title }}</h1><p>{{ message }}</p>
+  <form method="post" class="actions">{% csrf_token %}<button class="danger" type="submit">{{ submit_label|default:title }}</button><a class="button secondary" href="{{ cancel_url }}">Cancelar</a></form>
+</section>
+{% endblock %}

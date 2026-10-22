@@ -3,24 +3,25 @@
 {% block body_class %}login-page{% endblock %}
 {% block content %}
 <section class="login-layout">
-  <div class="login-story">
-    <p class="eyebrow">Nuestra comunidad</p>
-    <h1>Detrás de cada nota,<br><em>estamos juntos.</em></h1>
-    <p>El espacio de las familias y el comité de la Banda Escolar Esquipulas.</p>
-    <img src="{% static 'img/band-poster.svg' %}" width="640" height="640" alt="" class="login-art">
-  </div>
   <div class="login-form-wrap">
     <span class="login-icon">{% include 'includes/icon.html' with name='lock' %}</span>
-    <p class="eyebrow">Qué bueno tenerte aquí</p>
-    <h2>Ingresar</h2>
+
+    <h1>Ingresar</h1>
     <p class="muted">Acceso para encargados y comité.</p>
     <form method="post" class="form login-form">
       {% csrf_token %}
-      {{ form.as_p }}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      {% include 'includes/form_fields.html' %}
       <button type="submit">Ingresar {% include 'includes/icon.html' with name='arrow' %}</button>
     </form>
     <p class="login-help">¿Necesitas ayuda con tu cuenta?<br>Comunícate con el comité de la banda.</p>
     <a class="back-link" href="{% url 'home' %}">← Volver al calendario</a>
+  </div>
+  <div class="login-story">
+    <p class="eyebrow">Nuestra comunidad</p>
+    <h2>Banda Escolar Esquipulas</h2>
+    <p>El espacio de las familias y el comité de la Banda Escolar Esquipulas.</p>
+    <img src="{% static 'img/band-poster.svg' %}" width="640" height="640" alt="" class="login-art">
   </div>
 </section>
 {% endblock %}

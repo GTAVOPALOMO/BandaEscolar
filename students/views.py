@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from audit.services import log
 from common.permissions import staff_required
 from dues.services import sync_student_dues, student_summary
@@ -46,7 +47,7 @@ def student_edit(request, pk):
                 log(actor=request.user, module="students", action="EDIT_NAME", entity="Student", entity_id=student.pk, before={"name": old_name}, after={"name": student.name})
             return redirect("student_detail", pk=pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": "Editar estudiante"})
+    return render(request, "generic_form.html", {"form": form, "title": "Editar estudiante", "submit_label": "Guardar cambios", "cancel_url": reverse("student_detail", args=[pk])})
 
 @staff_required
 def student_withdraw(request, pk):
@@ -54,7 +55,7 @@ def student_withdraw(request, pk):
     if request.method == "POST" and form.is_valid():
         try: withdraw_student(student=student, withdrawal_date=form.cleaned_data["withdrawal_date"], actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, "Retiro registrado; las asignaciones liberadas quedaron como crédito."); return redirect("student_detail", pk=pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": f"Retirar a {student.name}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Retirar a {student.name}", "submit_label": "Registrar retiro", "cancel_url": reverse("student_detail", args=[pk]), "dangerous": True, "action_note": "El retiro ajustará las cuotas desde la fecha indicada. Revise la fecha y el motivo antes de continuar."})
 
 @staff_required
 def student_reenroll(request, pk):
@@ -62,7 +63,7 @@ def student_reenroll(request, pk):
     if request.method == "POST" and form.is_valid():
         try: reenroll_student(student=student, start_date=form.cleaned_data["start_date"], actor=request.user); messages.success(request, "Reingreso registrado."); return redirect("student_detail", pk=pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": f"Reingresar a {student.name}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Reingresar a {student.name}", "submit_label": "Registrar reingreso", "cancel_url": reverse("student_detail", args=[pk])})
 
 @staff_required
 def guardian_link(request, pk):
@@ -71,12 +72,12 @@ def guardian_link(request, pk):
         link, created = StudentGuardian.objects.get_or_create(student=student, guardian=form.cleaned_data["guardian"], defaults={"linked_by": request.user})
         if created: log(actor=request.user, module="students", action="LINK_GUARDIAN", entity="Student", entity_id=pk, after={"guardian": link.guardian_id})
         return redirect("student_detail", pk=pk)
-    return render(request, "generic_form.html", {"form": form, "title": "Vincular encargado"})
+    return render(request, "generic_form.html", {"form": form, "title": "Vincular encargado", "submit_label": "Vincular encargado", "cancel_url": reverse("student_detail", args=[pk])})
 
 @staff_required
 def guardian_unlink(request, pk, link_pk):
     link = get_object_or_404(StudentGuardian, pk=link_pk, student_id=pk)
-    if request.method != "POST": return render(request, "confirm.html", {"title": "Desvincular encargado", "message": "Esta persona dejará de ver al estudiante."})
+    if request.method != "POST": return render(request, "confirm.html", {"title": "Desvincular encargado", "message": "Esta persona dejará de ver al estudiante.", "cancel_url": reverse("student_detail", args=[pk]), "submit_label": "Desvincular encargado"})
     if StudentGuardian.objects.filter(student_id=pk).count() <= 1: messages.error(request, "El estudiante debe conservar al menos un encargado.")
     else:
         gid = link.guardian_id; link.delete(); log(actor=request.user, module="students", action="UNLINK_GUARDIAN", entity="Student", entity_id=pk, before={"guardian": gid})

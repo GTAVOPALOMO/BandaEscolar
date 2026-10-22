@@ -1,1 +1,20 @@
-{% extends 'base.html' %}{% load money %}{% block content %}<h1>Mis estudiantes</h1><div class="cards">{% for student, summary in cards %}<article class="card"><h2>{{ student.name }}</h2><p class="metric">{{ summary.pending|crc }}</p><p>Pendiente · {{ summary.pending_count }} cuota{{ summary.pending_count|pluralize }}</p><p>Saldo a favor: <strong>{{ summary.credit|crc }}</strong></p><a class="button" href="{% url 'student_detail' student.pk %}">Ver estado</a></article>{% empty %}<p class="panel">No tiene estudiantes vinculados.</p>{% endfor %}</div><h2>Próximos eventos</h2><div class="cards">{% for event in events %}<a class="card" href="{% url 'event_detail' event.pk %}"><strong>{{ event.name }}</strong><span>{{ event.date|date:'d/m/Y' }}</span></a>{% endfor %}</div>{% endblock %}
+{% extends 'base.html' %}{% load money %}
+{% block title %}Mi panel · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<h1>Mi panel</h1>
+<section id="mis-estudiantes" aria-labelledby="students-title">
+  <h2 id="students-title">Mis estudiantes y cuotas</h2>
+  <div class="cards">
+    {% for student, summary in cards %}
+    <article class="card">
+      <h3>{{ student.name }}</h3>
+      <p>Total pendiente</p><p class="metric">{{ summary.pending|crc }}</p>
+      <p>{{ summary.pending_count }} cuota{{ summary.pending_count|pluralize }} pendiente{{ summary.pending_count|pluralize }}</p>
+      <p>Saldo a favor: <strong>{{ summary.credit|crc }}</strong></p>
+      <a class="button" href="{% url 'student_detail' student.pk %}" aria-label="Ver cuotas y abonos de {{ student.name }}">Ver cuotas y abonos</a>
+    </article>
+    {% empty %}<p class="panel">No tiene estudiantes vinculados. Comuníquese con el comité para revisar su cuenta.</p>{% endfor %}
+  </div>
+</section>
+{% include 'includes/upcoming_events.html' %}
+{% endblock %}

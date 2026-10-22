@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
@@ -64,7 +65,7 @@ def ticket_void(request, pk):
     if request.method == "POST" and form.is_valid():
         try: void_ticket(ticket=ticket, actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, "Ticket anulado; no se modificó la caja."); return redirect("sale_detail", pk=ticket.sale_id)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": "Anular ticket"})
+    return render(request, "generic_form.html", {"form": form, "title": "Anular ticket", "submit_label": "Anular ticket", "cancel_url": reverse("sale_detail", args=[ticket.sale_id]), "dangerous": True, "action_note": "El ticket dejará de permitir el ingreso. Esta acción no devuelve dinero ni modifica la caja."})
 
 @staff_required
 def ticket_replace(request, pk):
@@ -72,4 +73,4 @@ def ticket_replace(request, pk):
     if request.method == "POST" and form.is_valid():
         try: new = replace_ticket(ticket=ticket, actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, f"Ticket reemplazado. Nuevo código: {new.code}"); return redirect("sale_detail", pk=ticket.sale_id)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": "Anular y reemplazar ticket"})
+    return render(request, "generic_form.html", {"form": form, "title": "Anular y reemplazar ticket", "submit_label": "Anular y reemplazar", "cancel_url": reverse("sale_detail", args=[ticket.sale_id]), "dangerous": True, "action_note": "El código anterior dejará de ser válido y se emitirá uno nuevo. No se modificará la caja."})

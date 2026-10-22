@@ -139,3 +139,5 @@ DEBUG=1 python manage.py backup_data --output ./backups/db.sqlite3
 - `audit`: bitácora inmutable y consulta con filtros.
 
 La copia vendorizada de `qr-scanner` es 1.4.2 (MIT), fijada al commit `abcfe1bce2703721408d8ce7ebde94a359998506`; no se carga desde CDN. Las decisiones de consistencia y el alcance exacto de las verificaciones están en [DECISIONES.md](DECISIONES.md) y [PLAN.md](PLAN.md).
+
+La aplicación del rediseño de agenda, navegación y formularios, junto con sus pruebas y capturas locales, está documentada en [UI/UX y verificación](docs/UI_UX.md).

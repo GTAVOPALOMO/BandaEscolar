@@ -1,0 +1,9 @@
+{% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form %}
+  {% if field.is_hidden %}{{ field }}{{ field.errors }}{% else %}
+  <div class="form-field">
+    {{ field.as_field_group }}
+    {% if not field.field.required %}<small class="field-optional">Opcional</small>{% endif %}
+  </div>
+  {% endif %}
+{% endfor %}

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -43,7 +44,7 @@ def payment_create(request, student_pk):
             payment, created = register_payment(student=student, amount=form.cleaned_data["amount"], actor=request.user, idempotency_token=form.cleaned_data["idempotency_token"], concept=form.cleaned_data["concept"])
             messages.success(request, "Abono registrado." if created else "Este abono ya había sido registrado; no se duplicó."); return redirect("student_detail", pk=student.pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": f"Registrar abono para {student.name}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Registrar abono para {student.name}", "submit_label": "Registrar abono", "cancel_url": reverse("student_detail", args=[student.pk])})
 
 @staff_required
 def payment_reverse(request, pk):
@@ -51,7 +52,7 @@ def payment_reverse(request, pk):
     if request.method == "POST" and form.is_valid():
         try: reverse_payment(payment=payment, actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, "Pago revertido mediante contramovimiento."); return redirect("student_detail", pk=payment.student_id)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": f"Revertir abono #{payment.pk}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Revertir abono #{payment.pk}", "submit_label": "Revertir abono", "cancel_url": reverse("student_detail", args=[payment.student_id]), "dangerous": True, "action_note": "Se registrará una corrección en caja y se recalcularán las cuotas. El abono original permanecerá en el historial."})
 
 @staff_required
 def waive(request, student_pk):
@@ -59,7 +60,7 @@ def waive(request, student_pk):
     if request.method == "POST" and form.is_valid():
         try: waive_dues(dues=form.cleaned_data["dues"], actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, "Cuotas perdonadas/regularizadas sin ingreso de caja."); return redirect("student_detail", pk=student.pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": f"Perdonar/regularizar cuotas de {student.name}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Perdonar/regularizar cuotas de {student.name}", "submit_label": "Regularizar cuotas", "cancel_url": reverse("student_detail", args=[student.pk]), "dangerous": True, "action_note": "Las cuotas seleccionadas quedarán sin cobro. Esta operación no registra un ingreso en caja."})
 
 @staff_required
 def waiver_reverse(request, pk):
@@ -67,7 +68,7 @@ def waiver_reverse(request, pk):
     if request.method == "POST" and form.is_valid():
         try: reverse_waiver(waiver=waiver, actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, "Perdón revertido."); return redirect("student_detail", pk=waiver.due.student_id)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": "Revertir perdón"})
+    return render(request, "generic_form.html", {"form": form, "title": "Revertir perdón", "submit_label": "Revertir perdón", "cancel_url": reverse("student_detail", args=[waiver.due.student_id]), "dangerous": True, "action_note": "La cuota volverá a calcularse como pendiente, aplicando el saldo a favor disponible."})
 
 @login_required
 def statement_pdf(request, student_pk):

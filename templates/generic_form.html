@@ -1,1 +1,11 @@
-{% extends 'base.html' %}{% block content %}<div class="page-head"><h1>{{ title }}</h1></div><form method="post"{% if multipart %} enctype="multipart/form-data"{% endif %} class="panel form">{% csrf_token %}{{ form.as_p }}<button type="submit">Guardar</button></form>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ title }} · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ title }}</h1></div>
+<form method="post"{% if multipart %} enctype="multipart/form-data"{% endif %} class="panel form">
+  {% csrf_token %}
+  {% if action_note %}<p class="notice">{{ action_note }}</p>{% endif %}
+  {% include 'includes/form_fields.html' %}
+  <div class="actions"><button type="submit"{% if dangerous %} class="danger"{% endif %}>{{ submit_label|default:'Guardar cambios' }}</button><a class="button secondary" href="{{ cancel_url }}">Cancelar</a></div>
+</form>
+{% endblock %}

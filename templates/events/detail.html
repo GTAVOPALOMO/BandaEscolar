@@ -1,19 +1,18 @@
-{% extends 'base.html' %}{% load money static %}
+{% extends 'base.html' %}{% load money %}
 {% block title %}{{ event.name }} · Banda Escolar Esquipulas{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'home' %}?mes={{ event.date|date:'Y-m' }}#agenda"><span aria-hidden="true">←</span> Volver a la agenda</a>
-<article class="event-detail">
-  <div class="event-image-wrap">{% if event.image %}<img src="{% url 'event_image' event.pk %}" alt="Imagen de {{ event.name }}">{% else %}<img src="{% static 'img/band-poster.svg' %}" width="640" height="640" alt="Trompeta y redoblante ilustrados, símbolos de nuestra banda">{% endif %}</div>
+<article class="event-detail{% if not event.image %} no-image{% endif %}">
   <div class="event-detail-copy">
-    <p class="eyebrow">Un encuentro con nuestra banda</p>
     <h1>{{ event.name }}</h1>
     <div class="event-facts">
-      <p>{% include 'includes/icon.html' with name='calendar' %}<span>{{ event.date|date:'l d \\d\\e F'|capfirst }}</span></p>
-      <p>{% include 'includes/icon.html' with name='clock' %}<span>{{ event.time|time:'H:i' }}</span></p>
-      <p>{% include 'includes/icon.html' with name='pin' %}<span>{{ event.place }}</span></p>
+      <p>{% include 'includes/icon.html' with name='calendar' %}<time datetime="{{ event.date|date:'Y-m-d' }}">{{ event.date|date:'l'|capfirst }}, {{ event.date|date:'d/m/Y' }}</time></p>
+      <p>{% include 'includes/icon.html' with name='clock' %}<span>Hora: <time datetime="{{ event.time|time:'H:i' }}">{{ event.time|time:'H:i' }}</time></span></p>
+      <p>{% include 'includes/icon.html' with name='pin' %}<span>Lugar: {{ event.place }}</span></p>
     </div>
-    <div class="prose">{{ event.description|linebreaks }}</div>
     {% if event.has_tickets %}<div class="ticket-note">{% include 'includes/icon.html' with name='ticket' %}<div><small>Entrada por persona</small><strong>{{ event.ticket_price|crc }}</strong><p>Venta presencial con el comité.</p></div></div>{% endif %}
+    <div class="prose">{{ event.description|linebreaks }}</div>
   </div>
+  {% if event.image %}<div class="event-image-wrap"><img src="{% url 'event_image' event.pk %}" alt="Cartel de {{ event.name }}" loading="lazy"></div>{% endif %}
 </article>
 {% endblock %}

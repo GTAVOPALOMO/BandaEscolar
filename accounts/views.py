@@ -8,13 +8,13 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
-from django.utils import timezone
+from django.urls import reverse, reverse_lazy
 from audit.services import log
 from cash.models import CashPeriod, CashMovement
 from common.permissions import staff_required, admin_required
 from dues.services import sync_student_dues, student_summary
 from events.models import Event
+from events.queries import upcoming_events
 from students.models import Student
 from tickets.models import Ticket, TicketSale
 from .forms import RateLimitedAuthenticationForm, UserCreateForm, UserRoleForm, ForcedPasswordForm
@@ -47,7 +47,7 @@ def dashboard(request):
             try: sync_student_dues(student, actor=request.user)
             except ValidationError as exc: messages.warning(request, f"{student.name}: {'; '.join(exc.messages)}")
             cards.append((student, student_summary(student)))
-        return render(request, "accounts/guardian_dashboard.html", {"cards": cards, "events": Event.objects.filter(is_active=True).order_by("date")[:6]})
+        return render(request, "accounts/guardian_dashboard.html", {"cards": cards, "events": upcoming_events()[:6]})
     if not request.user.is_committee: raise PermissionDenied
     for student in Student.objects.filter(is_active=True):
         try: sync_student_dues(student, actor=request.user)
@@ -60,7 +60,7 @@ def dashboard(request):
         "cash": open_period, "active_students": Student.objects.filter(is_active=True).count(),
         "pending_total": sum(x["pending"] for x in dues_summary), "pending_dues": sum(x["pending_count"] for x in dues_summary),
         "students_pending": sum(x["pending"] > 0 for x in dues_summary), "payments": __import__("dues.models", fromlist=["StudentPayment"]).StudentPayment.objects.order_by("-created_at")[:5],
-        "movements": CashMovement.objects.order_by("-created_at")[:8], "events": Event.objects.filter(is_active=True, date__gte=timezone.localdate()).order_by("date")[:6], "ticket_stats": ticket_stats,
+        "movements": CashMovement.objects.order_by("-created_at")[:8], "events": upcoming_events()[:6], "ticket_stats": ticket_stats,
     })
 
 @staff_required
@@ -74,7 +74,7 @@ def user_create(request):
             user = form.save(commit=False); password = secrets.token_urlsafe(12); user.set_password(password); user.must_change_password = True; user.save()
             log(actor=request.user, module="accounts", action="CREATE", entity="User", entity_id=user.pk, after={"username": user.username, "role": user.role})
         return render(request, "accounts/temporary_password.html", {"created_user": user, "temporary_password": password})
-    return render(request, "generic_form.html", {"form": form, "title": "Crear cuenta"})
+    return render(request, "generic_form.html", {"form": form, "title": "Crear cuenta", "submit_label": "Crear cuenta", "cancel_url": reverse("user_list")})
 
 @admin_required
 def user_role(request, pk):
@@ -85,13 +85,13 @@ def user_role(request, pk):
             form.add_error("role", "No se puede dejar el sistema sin administradores activos.")
         else:
             form.save(); log(actor=request.user, module="accounts", action="ROLE_CHANGE", entity="User", entity_id=user.pk, before={"role": old}, after={"role": user.role}); return redirect("user_list")
-    return render(request, "generic_form.html", {"form": form, "title": f"Cambiar rol de {user.username}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Cambiar rol de {user.username}", "submit_label": "Cambiar rol", "cancel_url": reverse("user_list"), "dangerous": True})
 
 @staff_required
 def user_reset_password(request, pk):
     user = get_object_or_404(User, pk=pk)
     if request.user.role != User.Role.ADMIN and user.role != User.Role.GUARDIAN: raise PermissionDenied
-    if request.method != "POST": return render(request, "confirm.html", {"title": "Restablecer contraseña", "message": f"Se generará una contraseña temporal para {user.username}."})
+    if request.method != "POST": return render(request, "confirm.html", {"title": "Restablecer contraseña", "message": f"Se generará una contraseña temporal para {user.username}.", "cancel_url": reverse("user_list"), "submit_label": "Restablecer contraseña"})
     password = secrets.token_urlsafe(12); user.set_password(password); user.must_change_password = True; user.save(update_fields=["password", "must_change_password"])
     log(actor=request.user, module="accounts", action="PASSWORD_RESET", entity="User", entity_id=user.pk)
     return render(request, "accounts/temporary_password.html", {"created_user": user, "temporary_password": password})
@@ -99,7 +99,7 @@ def user_reset_password(request, pk):
 @admin_required
 def user_toggle(request, pk):
     user = get_object_or_404(User, pk=pk)
-    if request.method != "POST": return render(request, "confirm.html", {"title": "Cambiar estado", "message": f"Cambiar estado de {user.username}."})
+    if request.method != "POST": return render(request, "confirm.html", {"title": "Cambiar estado", "message": f"Cambiar estado de {user.username}.", "cancel_url": reverse("user_list"), "submit_label": "Cambiar estado"})
     if user.is_active and user.role == User.Role.ADMIN and User.objects.filter(role=User.Role.ADMIN, is_active=True).count() <= 1:
         messages.error(request, "No se puede desactivar el último administrador activo.")
     else:

@@ -1,0 +1,132 @@
+[
+  {
+    "role": "public",
+    "path": "/",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "path": "/?vista=mes",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "path": "/eventos/4/",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "role": "public",
+    "path": "/ingresar/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "guardian",
+    "path": "/panel/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "guardian",
+    "path": "/estudiantes/1/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "committee",
+    "path": "/panel/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "committee",
+    "path": "/estudiantes/1/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "committee",
+    "path": "/gestion/eventos/nuevo/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "committee",
+    "path": "/tickets/vender/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "committee",
+    "path": "/tickets/escanear/",
+    "violations": [],
+    "incomplete": [
+      "video-caption"
+    ]
+  },
+  {
+    "role": "committee",
+    "path": "/caja/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "committee",
+    "path": "/cuentas/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "admin",
+    "path": "/panel/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "admin",
+    "path": "/estudiantes/1/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "admin",
+    "path": "/gestion/eventos/nuevo/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "admin",
+    "path": "/tickets/vender/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "admin",
+    "path": "/tickets/escanear/",
+    "violations": [],
+    "incomplete": [
+      "video-caption"
+    ]
+  },
+  {
+    "role": "admin",
+    "path": "/caja/",
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "role": "admin",
+    "path": "/cuentas/",
+    "violations": [],
+    "incomplete": []
+  }
+]

@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from common.permissions import staff_required
 from .forms import OpenCashForm, MovementForm, CorrectionForm
 from .models import CashPeriod, CashMovement
@@ -22,7 +23,7 @@ def cash_open(request):
     if request.method == "POST" and form.is_valid():
         try: open_cash(actor=request.user, opening_balance=form.cleaned_data["opening_balance"]); messages.success(request, "Caja abierta."); return redirect("cash_home")
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": "Abrir caja"})
+    return render(request, "generic_form.html", {"form": form, "title": "Abrir caja", "submit_label": "Abrir caja", "cancel_url": reverse("cash_home")})
 
 @staff_required
 def cash_movement(request):
@@ -30,7 +31,7 @@ def cash_movement(request):
     if request.method == "POST" and form.is_valid():
         try: add_movement(actor=request.user, kind=form.cleaned_data["kind"], origin=CashMovement.Origin.MANUAL, amount=form.cleaned_data["amount"], detail=form.cleaned_data["detail"]); messages.success(request, "Movimiento registrado."); return redirect("cash_home")
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": "Registrar movimiento manual"})
+    return render(request, "generic_form.html", {"form": form, "title": "Registrar movimiento manual", "submit_label": "Registrar movimiento", "cancel_url": reverse("cash_home")})
 
 @staff_required
 def cash_close(request):
@@ -46,4 +47,4 @@ def cash_correct(request, pk):
     if request.method == "POST" and form.is_valid():
         try: reverse_manual_movement(movement=movement, actor=request.user, reason=form.cleaned_data["reason"]); messages.success(request, "Corrección asentada en la caja abierta."); return redirect("cash_home")
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "generic_form.html", {"form": form, "title": f"Corregir movimiento #{pk}"})
+    return render(request, "generic_form.html", {"form": form, "title": f"Corregir movimiento #{pk}", "submit_label": "Registrar corrección", "cancel_url": reverse("cash_home"), "dangerous": True, "action_note": "Se registrará un movimiento de signo contrario en la caja abierta. El original se conservará en el historial."})

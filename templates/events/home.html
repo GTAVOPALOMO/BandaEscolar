@@ -1,60 +1,63 @@
-{% extends 'base.html' %}{% load static %}
+{% extends 'base.html' %}
+{% block title %}Agenda · Banda Escolar Esquipulas{% endblock %}
 {% block body_class %}home-page{% endblock %}
 {% block content %}
-<section class="hero" aria-labelledby="hero-title">
-  <div class="hero-copy">
-    <p class="eyebrow"><span class="eyebrow-line"></span> Nuestra banda, nuestra comunidad</p>
-    <h1 id="hero-title">La música<br><em>nos reúne.</em></h1>
-    <p class="hero-description">Cada ensayo, una ilusión.<br>Cada presentación, un motivo para encontrarnos.</p>
-    <div class="hero-actions">
-      <a class="button" href="#agenda">Explorar la agenda {% include 'includes/icon.html' with name='arrow' %}</a>
-      {% if user.is_authenticated %}<a class="text-link" href="{% url 'dashboard' %}">Ir a mi panel <span aria-hidden="true">↗</span></a>{% else %}<a class="text-link" href="{% url 'login' %}">Soy parte de la banda <span aria-hidden="true">↗</span></a>{% endif %}
-    </div>
-    <div class="hero-signature"><span class="rhythm-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>Talento que crece.<br><strong>Orgullo que se comparte.</strong></span></div>
+<header class="agenda-intro">
+  <h1>Agenda de la banda</h1>
+  <p>Ensayos, desfiles y presentaciones de la Banda Escolar Esquipulas.</p>
+</header>
+<section class="next-activity" aria-labelledby="next-title">
+  <h2 id="next-title">Próxima actividad</h2>
+  {% if next_event %}
+  <div class="next-activity-info">
+    <h3><a href="{% url 'event_detail' next_event.pk %}">{{ next_event.name }}</a></h3>
+    <p><time datetime="{{ next_event.date|date:'Y-m-d' }}T{{ next_event.time|time:'H:i' }}">{{ next_event.date|date:'d/m/Y' }} · {{ next_event.time|time:'H:i' }}</time> · {{ next_event.place }}</p>
   </div>
-  <figure class="hero-art">
-    <div class="poster-label"><span>BANDA ESCOLAR</span><span>ESQUIPULAS</span></div>
-    <img src="{% static 'img/band-poster.svg' %}" width="640" height="640" alt="Ilustración de una trompeta dorada y un redoblante rojo entre notas musicales sobre un fondo azul profundo." fetchpriority="high">
-    <figcaption><span>Juntos suena mejor.</span><span class="poster-star" aria-hidden="true">✳</span></figcaption>
-  </figure>
+  <a class="button" href="{% url 'event_detail' next_event.pk %}">Ver actividad <span aria-hidden="true">↗</span></a>
+  {% else %}<p>No hay próximas actividades publicadas. Puede consultar los meses anteriores en la agenda.</p>{% endif %}
 </section>
-
-<section class="agenda-section" id="agenda" aria-labelledby="agenda-title">
-  <div class="section-heading">
-    <div><p class="eyebrow">El ritmo de nuestra banda</p><h2 id="agenda-title">Nuestra agenda</h2></div>
-    <p>Ensayos, desfiles y presentaciones.<br>Un espacio para seguir cada encuentro.</p>
+<section class="agenda-section" id="agenda" aria-labelledby="agenda-title" data-view="{{ agenda_view }}">
+  <div class="agenda-toolbar">
+    <h2 id="agenda-title">{{ selected|date:'F Y'|capfirst }}</h2>
+    <nav class="month-controls" aria-label="Navegar por meses">
+      {% if prev %}<a href="?mes={{ prev|date:'Y-m' }}&amp;vista={{ agenda_view }}#agenda" aria-label="Anterior: {{ prev|date:'F Y' }}"><span aria-hidden="true">←</span> <span>Anterior</span></a>{% endif %}
+      <a href="?mes={{ today|date:'Y-m' }}&amp;vista={{ agenda_view }}#agenda">Hoy</a>
+      {% if next %}<a href="?mes={{ next|date:'Y-m' }}&amp;vista={{ agenda_view }}#agenda" aria-label="Siguiente: {{ next|date:'F Y' }}"><span>Siguiente</span> <span aria-hidden="true">→</span></a>{% endif %}
+    </nav>
+    <nav class="view-controls" aria-label="Vista de la agenda">
+      <a href="?mes={{ selected|date:'Y-m' }}&amp;vista=lista#agenda"{% if agenda_view == 'lista' %} aria-current="true"{% endif %} class="view-list">Lista</a>
+      <a href="?mes={{ selected|date:'Y-m' }}&amp;vista=mes#agenda"{% if agenda_view == 'mes' %} aria-current="true"{% endif %}>Mes</a>
+    </nav>
   </div>
   <div class="agenda-layout">
     <div class="calendar-panel">
-      <div class="month-nav">
-        <h3>{{ selected|date:'F Y'|capfirst }}</h3>
-        <div class="month-controls"><a href="?mes={{ prev|date:'Y-m' }}#agenda" aria-label="Mes anterior">←</a><a href="?mes={{ next|date:'Y-m' }}#agenda" aria-label="Mes siguiente">→</a></div>
-      </div>
-      <div class="calendar" role="table" aria-label="Calendario mensual">
-        <div class="calendar-week" role="row"><div class="weekday" role="columnheader">Lun</div><div class="weekday" role="columnheader">Mar</div><div class="weekday" role="columnheader">Mié</div><div class="weekday" role="columnheader">Jue</div><div class="weekday" role="columnheader">Vie</div><div class="weekday" role="columnheader">Sáb</div><div class="weekday" role="columnheader">Dom</div></div>
-        {% for week in weeks %}<div class="calendar-week" role="row">{% for day, day_events in week %}
-          <div class="day{% if not day %} empty{% endif %}{% if day_events %} has-events{% endif %}" role="cell">
-            {% if day %}<span class="day-number">{{ day }}</span>{% for event in day_events %}<a href="{% url 'event_detail' event.pk %}"><span>{{ event.time|time:'H:i' }}</span>{{ event.name }}</a>{% endfor %}{% endif %}
-          </div>
-        {% endfor %}</div>{% endfor %}
-      </div>
-      <div class="calendar-key"><span class="legend-dot"></span> Día con actividad <span class="calendar-key-note">Haz clic en un evento para ver los detalles</span></div>
+      <table class="calendar">
+        <caption class="sr-only">Calendario de {{ selected|date:'F Y' }}. Los días con actividades enlazan a sus detalles.</caption>
+        <thead><tr><th scope="col"><abbr title="Lunes">Lun</abbr></th><th scope="col"><abbr title="Martes">Mar</abbr></th><th scope="col"><abbr title="Miércoles">Mié</abbr></th><th scope="col"><abbr title="Jueves">Jue</abbr></th><th scope="col"><abbr title="Viernes">Vie</abbr></th><th scope="col"><abbr title="Sábado">Sáb</abbr></th><th scope="col"><abbr title="Domingo">Dom</abbr></th></tr></thead>
+        <tbody>{% for week in weeks %}<tr>{% for day, day_events in week %}
+          <td class="day{% if not day %} empty{% endif %}{% if day_events %} has-events{% endif %}{% if day == today_day %} is-today{% endif %}">
+            {% if day %}
+              <span class="day-number"{% if day == today_day %} aria-current="date"{% endif %}>{{ day }}{% if day == today_day %}<span class="sr-only">, hoy</span>{% endif %}</span>
+              {% if day_events %}<a class="day-agenda-link" href="#activity-{{ day_events.0.pk }}" aria-label="{{ day }} de {{ selected|date:'F' }}: {{ day_events|length }} actividad{{ day_events|length|pluralize:'es' }}{% if day == today_day %}, hoy{% endif %}"><span>{{ day }}</span><small>{{ day_events|length }} act.</small></a>{% endif %}
+              {% for event in day_events %}<a class="calendar-event" href="{% url 'event_detail' event.pk %}"><time datetime="{{ event.date|date:'Y-m-d' }}T{{ event.time|time:'H:i' }}">{{ event.time|time:'H:i' }}</time>{{ event.name }}{% if event.start_passed %}<small>Hora transcurrida</small>{% endif %}</a>{% endfor %}
+            {% endif %}
+          </td>
+        {% endfor %}</tr>{% endfor %}</tbody>
+      </table>
+      <p class="calendar-key"><span>● Con actividad</span><span>◎ Hoy: día enmarcado</span></p>
     </div>
-    <aside class="agenda-events" aria-labelledby="events-title">
-      <div class="agenda-events-heading"><h3 id="events-title">Este mes</h3><span class="event-count">{{ events|length }}</span></div>
+    <section class="agenda-events" aria-labelledby="events-title">
+      <div class="agenda-events-heading"><h3 id="events-title">Actividades del mes</h3><span class="event-count">{{ events|length }}<span class="sr-only"> actividades</span></span></div>
       <div class="event-list">
         {% for event in events %}
-        <a class="event-row" href="{% url 'event_detail' event.pk %}">
-          <time datetime="{{ event.date|date:'Y-m-d' }}"><strong>{{ event.date|date:'d' }}</strong><span>{{ event.date|date:'M' }}</span></time>
-          <span class="event-row-info"><strong>{{ event.name }}</strong><small>{{ event.time|time:'H:i' }} · {{ event.place }}</small></span>
+        <a class="event-row{% if event.start_passed %} event-past{% endif %}" id="activity-{{ event.pk }}" href="{% url 'event_detail' event.pk %}">
+          <time datetime="{{ event.date|date:'Y-m-d' }}T{{ event.time|time:'H:i' }}"><strong>{{ event.date|date:'d' }}</strong><span>{{ event.date|date:'M' }}</span></time>
+          <span class="event-row-info"><strong>{{ event.name }}</strong><small>{{ event.date|date:'l'|capfirst }} · {{ event.time|time:'H:i' }}<br>{{ event.place }}</small>{% if event.start_passed %}<span class="badge">Hora transcurrida</span>{% elif event.date == today %}<span class="badge">Hoy</span>{% endif %}</span>
           <span class="event-row-arrow" aria-hidden="true">↗</span>
         </a>
-        {% empty %}
-        <div class="empty-state">{% include 'includes/icon.html' with name='music' %}<h4>Un pequeño intermedio</h4><p>No hay eventos publicados este mes. Pronto habrá más música por compartir.</p></div>
-        {% endfor %}
+        {% empty %}<p class="empty-state">No hay actividades publicadas en {{ selected|date:'F Y' }}.</p>{% endfor %}
       </div>
-      <p class="agenda-note">{% include 'includes/icon.html' with name='calendar' %}<span>La agenda se actualiza con las actividades publicadas por el comité.</span></p>
-    </aside>
+    </section>
   </div>
 </section>
 {% endblock %}

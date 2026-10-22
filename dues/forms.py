@@ -4,7 +4,7 @@ from .models import FeeRateHistory, MonthlyDue
 
 class RateForm(forms.Form):
     amount = forms.IntegerField(label="Mensualidad en colones", min_value=1)
-    initial_effective_month = forms.DateField(label="Mes inicial de vigencia", required=False, widget=forms.DateInput(attrs={"type": "date"}), help_text="Solo se usa al registrar la primera tarifa histórica.")
+    initial_effective_month = forms.DateField(label="Mes inicial de vigencia", required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}), help_text="Solo se usa al registrar la primera tarifa histórica.")
 
 class PaymentForm(forms.Form):
     amount = forms.IntegerField(label="Monto del abono", min_value=1)

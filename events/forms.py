@@ -5,7 +5,9 @@ from .models import Event
 class EventForm(forms.ModelForm):
     class Meta:
         model = Event; fields = ["name", "date", "time", "place", "description", "image", "is_active", "has_tickets", "ticket_price"]
-        widgets = {"date": forms.DateInput(attrs={"type": "date"}), "time": forms.TimeInput(attrs={"type": "time"}), "description": forms.Textarea(attrs={"rows": 5})}
+        labels = {"name": "Nombre", "date": "Fecha", "time": "Hora", "place": "Lugar", "description": "Descripción", "image": "Cartel o imagen", "is_active": "Publicar en la agenda", "has_tickets": "Vender entradas", "ticket_price": "Precio por entrada (CRC)"}
+        help_texts = {"time": "Hora de Costa Rica, en formato de 24 horas.", "image": "JPG, PNG o WebP. Máximo 4 MB.", "ticket_price": "Indique el precio solo si el evento tiene venta de entradas."}
+        widgets = {"date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}), "time": forms.TimeInput(format="%H:%M", attrs={"type": "time"}), "description": forms.Textarea(attrs={"rows": 5})}
     def clean_image(self):
         image = self.cleaned_data.get("image")
         is_new_upload = image and (hasattr(image, "temporary_file_path") or not getattr(image, "_committed", False))

@@ -1,0 +1,8 @@
+<section class="panel upcoming-events" aria-labelledby="upcoming-title">
+  <h2 id="upcoming-title">Próximos eventos</h2>
+  <ul class="clean">
+    {% for event in events %}<li><a href="{% url 'event_detail' event.pk %}">{{ event.name }}</a><br><time datetime="{{ event.date|date:'Y-m-d' }}T{{ event.time|time:'H:i' }}">{{ event.date|date:'d/m/Y' }} · {{ event.time|time:'H:i' }}</time> · {{ event.place }}</li>
+    {% empty %}<li>No hay próximas actividades publicadas.</li>{% endfor %}
+  </ul>
+  <a href="{% url 'home' %}">Consultar la agenda completa</a>
+</section>

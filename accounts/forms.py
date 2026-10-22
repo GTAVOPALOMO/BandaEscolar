@@ -14,6 +14,7 @@ class RateLimitedAuthenticationForm(AuthenticationForm):
 
 class UserCreateForm(forms.ModelForm):
     class Meta:
+        labels = {"role": "Rol"}
         model = User; fields = ["username", "first_name", "last_name", "role"]
     def __init__(self, *args, creator=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -21,6 +22,7 @@ class UserCreateForm(forms.ModelForm):
             self.fields["role"].choices = [(User.Role.GUARDIAN, "Encargado")]
 
 class UserRoleForm(forms.ModelForm):
-    class Meta: model = User; fields = ["role"]
+    class Meta:
+        model = User; fields = ["role"]; labels = {"role": "Rol"}
 
 class ForcedPasswordForm(PasswordChangeForm): pass
