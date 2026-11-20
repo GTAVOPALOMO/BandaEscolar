@@ -6,7 +6,7 @@ from accounts.models import User
 from cash.models import CashMovement
 from cash.services import open_cash, close_cash
 from events.forms import EventForm
-from events.models import Event
+from events.models import Event, EventPrice
 from .models import Ticket, TicketSale, TicketAction
 from .services import sell_tickets, validate_ticket, void_ticket, replace_ticket
 
@@ -50,3 +50,25 @@ class TicketTests(TestCase):
         sale, _ = self.sell(quantity=2); self.client.force_login(self.user)
         response = self.client.get(reverse("sale_pdf", args=[sale.pk])); self.assertEqual(response.status_code, 200); self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertEqual(self.client.get(reverse("sale_create")).status_code, 200)
+
+    def test_mixed_category_sale_preserves_each_ticket_price(self):
+        adult = EventPrice.objects.create(event=self.event, name="Adulto", amount=3000)
+        child = EventPrice.objects.create(event=self.event, name="Niño", amount=1500)
+        sale, created = sell_tickets(event=self.event, buyer_name="María", buyer_id="1-2345",
+            quantity=3, actor=self.user, idempotency_token="mixed",
+            breakdown=[{"price_id": adult.pk, "quantity": 2}, {"price_id": child.pk, "quantity": 1}])
+        self.assertTrue(created)
+        self.assertEqual(sale.total, 7500)
+        self.assertEqual(sale.tickets.filter(category_name="Adulto", sold_price=3000).count(), 2)
+        self.assertEqual(sale.tickets.filter(category_name="Niño", sold_price=1500).count(), 1)
+        self.assertEqual(CashMovement.objects.get().amount, 7500)
+        child.amount = 2000
+        child.save()
+        self.assertEqual(sale.tickets.filter(sold_price=1500).count(), 1)
+
+    def test_mixed_category_sale_rejects_wrong_quantity(self):
+        adult = EventPrice.objects.create(event=self.event, name="Adulto", amount=3000)
+        with self.assertRaises(ValidationError):
+            sell_tickets(event=self.event, buyer_name="María", buyer_id="1-2345",
+                quantity=2, actor=self.user, idempotency_token="bad",
+                breakdown=[{"price_id": adult.pk, "quantity": 1}])
