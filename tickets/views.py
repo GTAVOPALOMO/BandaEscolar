@@ -31,7 +31,7 @@ def sale_create(request):
             sale, created = sell_tickets(event=form.cleaned_data["event"], buyer_name=form.cleaned_data["buyer_name"], buyer_id=form.cleaned_data["buyer_id"], quantity=form.cleaned_data["quantity"], breakdown=breakdown, actor=request.user, idempotency_token=form.cleaned_data["idempotency_token"])
             messages.success(request, "Venta confirmada." if created else "La venta ya estaba registrada; no se duplicó."); return redirect("sale_detail", pk=sale.pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "tickets/sale_form.html", {"form": form, "prices": {str(e.pk): [{"id": p.pk, "name": p.name, "amount": p.amount} for p in e.prices.filter(is_active=True)] for e in form.fields["event"].queryset.prefetch_related("prices")}})
+    return render(request, "tickets/sale_form.html", {"form": form, "prices": {str(e.pk): [{"id": p.pk, "name": p.name, "amount": p.amount} for p in e.prices.filter(is_active=True)] or ([{"id": None, "name": "General", "amount": e.ticket_price}] if e.ticket_price else []) for e in form.fields["event"].queryset.prefetch_related("prices")}})
 
 @staff_required
 def sale_detail(request, pk): return render(request, "tickets/sale_detail.html", {"sale": get_object_or_404(TicketSale.objects.select_related("event"), pk=pk)})
