@@ -6,6 +6,7 @@ class SaleForm(forms.Form):
     buyer_name = forms.CharField(label="Nombre del comprador", max_length=150)
     buyer_id = forms.CharField(label="Cédula del comprador", max_length=40)
     quantity = forms.IntegerField(label="Cantidad", min_value=1, max_value=500)
+    breakdown = forms.CharField(widget=forms.HiddenInput)
     idempotency_token = forms.CharField(max_length=64, widget=forms.HiddenInput)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs); self.fields["event"].queryset = Event.objects.filter(is_active=True, has_tickets=True).order_by("date")
