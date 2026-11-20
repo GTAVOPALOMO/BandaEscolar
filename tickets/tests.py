@@ -61,7 +61,7 @@ class TicketTests(TestCase):
         self.assertEqual(sale.total, 7500)
         self.assertEqual(sale.tickets.filter(category_name="Adulto", sold_price=3000).count(), 2)
         self.assertEqual(sale.tickets.filter(category_name="Niño", sold_price=1500).count(), 1)
-        self.assertEqual(CashMovement.objects.get().amount, 7500)
+        self.assertEqual(CashMovement.objects.filter(origin=CashMovement.Origin.TICKET).last().amount, 7500)
         child.amount = 2000
         child.save()
         self.assertEqual(sale.tickets.filter(sold_price=1500).count(), 1)
