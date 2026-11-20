@@ -9,8 +9,8 @@ from django.urls import reverse
 from django.http import FileResponse, Http404
 from audit.services import log
 from common.permissions import staff_required
-from .forms import EventForm
-from .models import Event
+from .forms import EventForm, EventPriceForm
+from .models import Event, EventPrice
 from .queries import event_clock, upcoming_events
 
 def home(request):
@@ -80,3 +80,20 @@ def event_toggle(request, pk):
     event = get_object_or_404(Event, pk=pk)
     if request.method != "POST": return render(request, "confirm.html", {"title": "Cambiar visibilidad", "message": "El historial financiero y los tickets no cambiarán.", "cancel_url": reverse("event_manage"), "submit_label": "Cambiar visibilidad"})
     event.is_active = not event.is_active; event.save(update_fields=["is_active", "updated_at"]); log(actor=request.user, module="events", action="TOGGLE", entity="Event", entity_id=pk, after={"is_active": event.is_active}); return redirect("event_manage")
+
+@staff_required
+def event_prices(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    form = EventPriceForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        price = form.save(commit=False)
+        price.event = event
+        try:
+            with transaction.atomic():
+                price.save()
+                log(actor=request.user, module="events", action="PRICE_CREATE", entity="EventPrice", entity_id=price.pk, after={"event": event.pk, "name": price.name, "amount": price.amount})
+            messages.success(request, "Tarifa agregada.")
+            return redirect("event_prices", pk=pk)
+        except Exception:
+            form.add_error("name", "Ya existe una categoría con ese nombre.")
+    return render(request, "events/prices.html", {"event": event, "form": form, "prices": event.prices.all()})
