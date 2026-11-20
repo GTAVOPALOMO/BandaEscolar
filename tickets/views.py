@@ -1,4 +1,5 @@
 import io
+import json
 import qrcode
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -23,10 +24,10 @@ def sale_create(request):
     form = SaleForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            sale, created = sell_tickets(event=form.cleaned_data["event"], buyer_name=form.cleaned_data["buyer_name"], buyer_id=form.cleaned_data["buyer_id"], quantity=form.cleaned_data["quantity"], actor=request.user, idempotency_token=form.cleaned_data["idempotency_token"])
+            sale, created = sell_tickets(event=form.cleaned_data["event"], buyer_name=form.cleaned_data["buyer_name"], buyer_id=form.cleaned_data["buyer_id"], quantity=form.cleaned_data["quantity"], breakdown=json.loads(form.cleaned_data["breakdown"]), actor=request.user, idempotency_token=form.cleaned_data["idempotency_token"])
             messages.success(request, "Venta confirmada." if created else "La venta ya estaba registrada; no se duplicó."); return redirect("sale_detail", pk=sale.pk)
         except ValidationError as exc: form.add_error(None, exc)
-    return render(request, "tickets/sale_form.html", {"form": form, "prices": {str(e.pk): e.ticket_price for e in form.fields["event"].queryset}})
+    return render(request, "tickets/sale_form.html", {"form": form, "prices": {str(e.pk): [{"id": p.pk, "name": p.name, "amount": p.amount} for p in e.prices.filter(is_active=True)] for e in form.fields["event"].queryset.prefetch_related("prices")}})
 
 @staff_required
 def sale_detail(request, pk): return render(request, "tickets/sale_detail.html", {"sale": get_object_or_404(TicketSale.objects.select_related("event"), pk=pk)})
@@ -45,6 +46,7 @@ def sale_pdf(request, pk):
         c.drawImage(ImageReader(qrbuf), 55*mm, height-150*mm, 100*mm, 100*mm, preserveAspectRatio=True)
         c.setFont("Courier-Bold", 10); c.drawCentredString(width/2, height-160*mm, ticket.code)
         c.setFont("Helvetica", 9); c.drawCentredString(width/2, height-169*mm, f"Entrada {index} de {len(printable)} · Estado al emitir: {ticket.get_status_display()}")
+        c.drawCentredString(width/2, height-178*mm, f"Categoria: {ticket.category_name or 'General'} | CRC {ticket.sold_price or sale.unit_price}")
         c.drawCentredString(width/2, 18*mm, "Presente este QR en la entrada. El código no contiene la cédula del comprador.")
     c.save(); buffer.seek(0); return FileResponse(buffer, as_attachment=True, filename=f"entradas-{sale.pk}.pdf", content_type="application/pdf")
 
