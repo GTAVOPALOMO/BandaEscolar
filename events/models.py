@@ -22,7 +22,7 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     class Meta: ordering = ["date", "time"]
     def clean(self):
-        if self.has_tickets and not self.ticket_price: raise ValidationError({"ticket_price": "Indique un precio positivo."})
+        if self.has_tickets and not self.ticket_price and not (self.pk and self.prices.filter(is_active=True).exists()): raise ValidationError({"ticket_price": "Indique un precio positivo."})
         if not self.has_tickets and self.ticket_price is not None: raise ValidationError({"ticket_price": "Un evento sin entradas no lleva precio."})
 
     def __str__(self): return self.name
