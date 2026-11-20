@@ -64,16 +64,49 @@ def event_create(request):
 @staff_required
 def event_edit(request, pk):
     event = get_object_or_404(Event, pk=pk)
+    price_rows = list(event.prices.order_by("pk"))
+    price_error = None
     if request.method == "POST":
         with transaction.atomic():
-            event = Event.objects.select_for_update().get(pk=event.pk)
+            event = Event.objects.select_for_update().get(pk=pk)
+            price_rows = list(event.prices.select_for_update().order_by("pk"))
             old = {"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active}
             form = EventForm(request.POST, request.FILES, instance=event)
-            if form.is_valid():
-                form.save(); log(actor=request.user, module="events", action="EDIT", entity="Event", entity_id=event.pk, before=old, after={"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active}); messages.success(request, "Evento actualizado."); return redirect("event_manage")
+            updates = []
+            for price in price_rows:
+                raw = request.POST.get(f"price_amount_{price.pk}", "")
+                try:
+                    amount = int(raw)
+                    if amount <= 0: raise ValueError
+                except (ValueError, TypeError):
+                    price_error = "Todas las tarifas deben tener un precio entero mayor que cero."
+                    break
+                updates.append((price, amount, f"price_active_{price.pk}" in request.POST))
+            new_name = request.POST.get("new_price_name", "").strip()
+            new_amount_raw = request.POST.get("new_price_amount", "").strip()
+            new_amount = None
+            if not price_error and (new_name or new_amount_raw):
+                try:
+                    new_amount = int(new_amount_raw)
+                    if not new_name or len(new_name) > 80 or new_amount <= 0: raise ValueError
+                except (ValueError, TypeError):
+                    price_error = "Para agregar una categoría indique nombre y precio entero positivo."
+                if not price_error and event.prices.filter(name__iexact=new_name).exists():
+                    price_error = "Ya existe una categoría con ese nombre."
+            if form.is_valid() and not price_error:
+                form.save()
+                for price, amount, active in updates:
+                    price.amount = amount
+                    price.is_active = active
+                    price.save(update_fields=["amount", "is_active"])
+                if new_name:
+                    EventPrice.objects.create(event=event, name=new_name, amount=new_amount)
+                log(actor=request.user, module="events", action="EDIT", entity="Event", entity_id=event.pk, before=old, after={"name": event.name, "date": event.date.isoformat(), "ticket_price": event.ticket_price, "is_active": event.is_active, "prices": [{"name": p.name, "amount": p.amount, "is_active": p.is_active} for p in event.prices.all()]})
+                messages.success(request, "Evento y tarifas actualizados.")
+                return redirect("event_manage")
     else:
         form = EventForm(instance=event)
-    return render(request, "generic_form.html", {"form": form, "title": "Editar evento", "multipart": True, "submit_label": "Guardar cambios", "cancel_url": reverse("event_manage")})
+    return render(request, "events/edit.html", {"form": form, "event": event, "prices": price_rows, "price_error": price_error, "cancel_url": reverse("event_manage")})
 
 @staff_required
 def event_toggle(request, pk):
