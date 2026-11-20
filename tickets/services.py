@@ -13,7 +13,7 @@ def sell_tickets(*, event, buyer_name, buyer_id, quantity, actor, idempotency_to
     event = type(event).objects.select_for_update().get(pk=event.pk)
     existing = TicketSale.objects.filter(idempotency_token=idempotency_token).first()
     if existing: return existing, False
-    if not event.is_active or not event.has_tickets or not event.ticket_price:
+    if not event.is_active or not event.has_tickets or not (event.ticket_price or event.prices.filter(is_active=True).exists()):
         raise ValidationError("Este evento no tiene venta de entradas habilitada.")
     if quantity <= 0: raise ValidationError("La cantidad debe ser positiva.")
     if not buyer_name.strip() or not buyer_id.strip(): raise ValidationError("Nombre y cédula del comprador son obligatorios.")
