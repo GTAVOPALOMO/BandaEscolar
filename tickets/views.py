@@ -24,7 +24,11 @@ def sale_create(request):
     form = SaleForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            sale, created = sell_tickets(event=form.cleaned_data["event"], buyer_name=form.cleaned_data["buyer_name"], buyer_id=form.cleaned_data["buyer_id"], quantity=form.cleaned_data["quantity"], breakdown=json.loads(form.cleaned_data["breakdown"]), actor=request.user, idempotency_token=form.cleaned_data["idempotency_token"])
+            try:
+                breakdown = json.loads(form.cleaned_data["breakdown"])
+            except (ValueError, TypeError):
+                raise ValidationError("Distribución de entradas inválida.")
+            sale, created = sell_tickets(event=form.cleaned_data["event"], buyer_name=form.cleaned_data["buyer_name"], buyer_id=form.cleaned_data["buyer_id"], quantity=form.cleaned_data["quantity"], breakdown=breakdown, actor=request.user, idempotency_token=form.cleaned_data["idempotency_token"])
             messages.success(request, "Venta confirmada." if created else "La venta ya estaba registrada; no se duplicó."); return redirect("sale_detail", pk=sale.pk)
         except ValidationError as exc: form.add_error(None, exc)
     return render(request, "tickets/sale_form.html", {"form": form, "prices": {str(e.pk): [{"id": p.pk, "name": p.name, "amount": p.amount} for p in e.prices.filter(is_active=True)] for e in form.fields["event"].queryset.prefetch_related("prices")}})
