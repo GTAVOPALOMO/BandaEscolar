@@ -11,7 +11,7 @@ if (pricesNode && eventField && quantityField && breakdownField && rowsNode && o
   const update = () => {
     const selected = prices[eventField.value] || [];
     const entries = [...rowsNode.querySelectorAll('input[data-price-id]')].map(input => ({
-      price_id: Number(input.dataset.priceId),
+      price_id: input.dataset.priceId === 'null' ? null : Number(input.dataset.priceId),
       quantity: Number(input.value)
     })).filter(item => Number.isInteger(item.quantity) && item.quantity > 0);
     const count = entries.reduce((sum, item) => sum + item.quantity, 0);
