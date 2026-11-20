@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Editar evento · Banda Escolar Esquipulas{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Editar evento</h1></div>
+<form method="post" enctype="multipart/form-data" class="panel form">
+  {% csrf_token %}
+  {% include 'includes/form_fields.html' %}
+  <h2>Tarifas de entradas</h2>
+  <p>Modifique los precios de las categorías. Las entradas ya vendidas conservarán el precio que se cobró.</p>
+  {% if price_error %}<p class="notice" role="alert">{{ price_error }}</p>{% endif %}
+  {% for price in prices %}
+    <div class="field">
+      <label for="price_amount_{{ price.pk }}">{{ price.name }} (₡)</label>
+      <input id="price_amount_{{ price.pk }}" type="number" min="1" step="1" name="price_amount_{{ price.pk }}" value="{% if request.method == 'POST' %}{{ price.amount }}{% else %}{{ price.amount }}{% endif %}" required>
+      <label><input type="checkbox" name="price_active_{{ price.pk }}" {% if price.is_active %}checked{% endif %}> Tarifa activa</label>
+    </div>
+  {% empty %}
+    <p>Este evento todavía no tiene categorías.</p>
+  {% endfor %}
+  <h3>Agregar otra categoría</h3>
+  <label for="new_price_name">Nombre de categoría</label>
+  <input id="new_price_name" type="text" maxlength="80" name="new_price_name" placeholder="Ej.: Niño">
+  <label for="new_price_amount">Precio (₡)</label>
+  <input id="new_price_amount" type="number" min="1" step="1" name="new_price_amount" placeholder="Ej.: 1000">
+  <div class="actions"><button type="submit">Guardar evento y tarifas</button><a class="button secondary" href="{{ cancel_url }}">Cancelar</a></div>
+</form>
+{% endblock %}
