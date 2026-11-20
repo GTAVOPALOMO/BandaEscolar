@@ -26,3 +26,12 @@ class Event(models.Model):
         if not self.has_tickets and self.ticket_price is not None: raise ValidationError({"ticket_price": "Un evento sin entradas no lleva precio."})
 
     def __str__(self): return self.name
+
+class EventPrice(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="prices")
+    name = models.CharField(max_length=80)
+    amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    is_active = models.BooleanField(default=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["event", "name"], name="unique_event_price_name")]
+    def __str__(self): return f"{self.event.name}: {self.name}"
