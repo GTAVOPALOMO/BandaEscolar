@@ -7,7 +7,7 @@ from cash.services import add_movement, get_open_period
 from .models import TicketSale, Ticket, TicketAction
 
 @transaction.atomic
-def sell_tickets(*, event, buyer_name, buyer_id, quantity, actor, idempotency_token):
+def sell_tickets(*, event, buyer_name, buyer_id, quantity, actor, idempotency_token, breakdown=None):
     existing = TicketSale.objects.filter(idempotency_token=idempotency_token).first()
     if existing: return existing, False
     event = type(event).objects.select_for_update().get(pk=event.pk)
@@ -18,21 +18,44 @@ def sell_tickets(*, event, buyer_name, buyer_id, quantity, actor, idempotency_to
     if quantity <= 0: raise ValidationError("La cantidad debe ser positiva.")
     if not buyer_name.strip() or not buyer_id.strip(): raise ValidationError("Nombre y cédula del comprador son obligatorios.")
     if not get_open_period(): raise ValidationError("La caja está cerrada. Abra una caja para vender.")
-    total = event.ticket_price * quantity
+    from events.models import EventPrice
+    if breakdown is None:
+        breakdown = [{"price_id": None, "quantity": quantity}]
+    if not isinstance(breakdown, list) or not breakdown:
+        raise ValidationError("Indique las categorías de entradas.")
+    price_ids = [row.get("price_id") for row in breakdown if isinstance(row, dict) and row.get("price_id") is not None]
+    prices = {p.pk: p for p in EventPrice.objects.filter(event=event, is_active=True, pk__in=price_ids)}
+    rows = []
+    for row in breakdown:
+        if not isinstance(row, dict) or type(row.get("quantity")) is not int or row["quantity"] <= 0:
+            raise ValidationError("Cantidad por categoría inválida.")
+        pid = row.get("price_id")
+        if pid is None:
+            if len(breakdown) != 1 or not event.ticket_price:
+                raise ValidationError("Categoría inválida.")
+            name, amount = "General", event.ticket_price
+        elif type(pid) is int and pid in prices:
+            name, amount = prices[pid].name, prices[pid].amount
+        else:
+            raise ValidationError("Categoría inválida o inactiva.")
+        rows.append({"price_id": pid, "name": name, "amount": amount, "quantity": row["quantity"]})
+    if sum(row["quantity"] for row in rows) != quantity or len({row["price_id"] for row in rows}) != len(rows):
+        raise ValidationError("La distribución debe coincidir con la cantidad y no repetir categorías.")
+    total = sum(row["amount"] * row["quantity"] for row in rows)
     try:
         with transaction.atomic():
             sale = TicketSale.objects.create(event=event, buyer_name=buyer_name.strip(), buyer_id=buyer_id.strip(), quantity=quantity,
-                unit_price=event.ticket_price, total=total, idempotency_token=idempotency_token, sold_by=actor)
+                unit_price=rows[0]['amount'], total=total, price_breakdown=rows, idempotency_token=idempotency_token, sold_by=actor)
     except IntegrityError:
         existing = TicketSale.objects.filter(idempotency_token=idempotency_token).first()
         if existing: return existing, False
         raise
-    Ticket.objects.bulk_create([Ticket(sale=sale) for _ in range(quantity)])
+    Ticket.objects.bulk_create([Ticket(sale=sale, category_name=row["name"], sold_price=row["amount"]) for row in rows for _ in range(row["quantity"])])
     movement = add_movement(actor=actor, kind=CashMovement.Kind.IN, origin=CashMovement.Origin.TICKET, amount=total,
         detail=f"Venta de {quantity} entrada(s) para {event.name}", source_key=f"ticket-sale:{sale.pk}")
     sale.cash_movement = movement; sale.save(update_fields=["cash_movement"])
     log(actor=actor, module="tickets", action="SALE", entity="TicketSale", entity_id=sale.pk,
-        after={"event": event.pk, "quantity": quantity, "unit_price": event.ticket_price, "total": total}, correlation_id=idempotency_token)
+        after={"event": event.pk, "quantity": quantity, "price_breakdown": rows, "total": total}, correlation_id=idempotency_token)
     return sale, True
 
 def validate_ticket(*, event, code, actor, request_token=None):
