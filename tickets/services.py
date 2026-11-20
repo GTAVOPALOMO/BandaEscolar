@@ -99,7 +99,7 @@ def void_ticket(*, ticket, actor, reason):
 @transaction.atomic
 def replace_ticket(*, ticket, actor, reason):
     old = void_ticket(ticket=ticket, actor=actor, reason=reason)
-    new = Ticket.objects.create(sale=old.sale, replaces=old)
+    new = Ticket.objects.create(sale=old.sale, replaces=old, category_name=old.category_name, sold_price=old.sold_price)
     TicketAction.objects.create(ticket=new, action=TicketAction.Type.REPLACE, actor=actor, reason=reason)
     log(actor=actor, module="tickets", action="REPLACE", entity="Ticket", entity_id=new.pk, reason=reason, before={"ticket": old.pk})
     return new
