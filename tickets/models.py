@@ -12,6 +12,7 @@ class TicketSale(models.Model):
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     total = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    price_breakdown = models.JSONField(default=list, blank=True)
     idempotency_token = models.CharField(max_length=64, unique=True)
     sold_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     sold_at = models.DateTimeField(auto_now_add=True)
@@ -21,6 +22,8 @@ class Ticket(models.Model):
     class Status(models.TextChoices): VALID = "VALID", "Válido"; USED = "USED", "Usado"; VOID = "VOID", "Anulado"
     sale = models.ForeignKey(TicketSale, on_delete=models.PROTECT, related_name="tickets")
     code = models.CharField(max_length=64, unique=True, default=ticket_code)
+    category_name = models.CharField(max_length=80, blank=True)
+    sold_price = models.PositiveIntegerField(null=True, blank=True)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.VALID)
     used_at = models.DateTimeField(null=True, blank=True)
     used_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="tickets_used")

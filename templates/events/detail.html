@@ -10,7 +10,7 @@
       <p>{% include 'includes/icon.html' with name='clock' %}<span>Hora: <time datetime="{{ event.time|time:'H:i' }}">{{ event.time|time:'H:i' }}</time></span></p>
       <p>{% include 'includes/icon.html' with name='pin' %}<span>Lugar: {{ event.place }}</span></p>
     </div>
-    {% if event.has_tickets %}<div class="ticket-note">{% include 'includes/icon.html' with name='ticket' %}<div><small>Entrada por persona</small><strong>{{ event.ticket_price|crc }}</strong><p>Venta presencial con el comité.</p></div></div>{% endif %}
+    {% if event.has_tickets %}<div class="ticket-note">{% include 'includes/icon.html' with name='ticket' %}<div><small>Entrada por persona</small>{% for price in event.prices.all %}{% if price.is_active %}<p><strong>{{ price.name }}: {{ price.amount|crc }}</strong></p>{% endif %}{% empty %}<strong>{{ event.ticket_price|crc }}</strong>{% endfor %}<p>Venta presencial con el comité.</p></div></div>{% endif %}
     <div class="prose">{{ event.description|linebreaks }}</div>
   </div>
   {% if event.image %}<div class="event-image-wrap"><img src="{% url 'event_image' event.pk %}" alt="Cartel de {{ event.name }}" loading="lazy"></div>{% endif %}

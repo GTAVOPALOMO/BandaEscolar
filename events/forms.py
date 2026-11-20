@@ -25,3 +25,9 @@ class EventForm(forms.ModelForm):
         if self.instance.pk and self.instance.sales.exists() and price != self.instance.ticket_price:
             raise forms.ValidationError("El precio está bloqueado porque ya existe una venta.")
         return price
+
+from .models import EventPrice
+class EventPriceForm(forms.ModelForm):
+    class Meta:
+        model = EventPrice
+        fields = ["name", "amount", "is_active"]

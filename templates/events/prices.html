@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Tarifas de {{ event.name }}</h1>
+<div class="panel">
+  <h2>Categorías actuales</h2>
+  <ul>{% for price in prices %}<li>{{ price.name }}: ₡{{ price.amount }} {% if not price.is_active %}(inactiva){% endif %}</li>{% empty %}<li>Sin categorías.</li>{% endfor %}</ul>
+  <h2>Agregar tarifa</h2>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Agregar categoría</button></form>
+  <a href="{% url 'event_manage' %}">Volver a eventos</a>
+</div>
+{% endblock %}
